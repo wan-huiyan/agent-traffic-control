@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "wan-huiyan-agent-squad-hr",
+  "description": "Coordination toolkit for parallel Claude Code sessions sharing one repo \u2014 issue-pickup claim protocol (assignee + wip label), worktree & session-isolation pitfalls, parallel-PR conflict recovery, and subagent-integrity edge cases.",
+  "owner": {
+    "name": "wan-huiyan"
+  },
+  "plugins": [
+    {
+      "name": "agent-squad-hr",
+      "source": "./plugins/agent-squad-hr",
+      "description": "Coordination toolkit for parallel Claude Code sessions sharing one repo \u2014 issue-pickup claim protocol (assignee + wip label), worktree & session-isolation pitfalls, parallel-PR conflict recovery, and subagent-integrity edge cases.",
+      "version": "1.0.0"
+    }
+  ]
+}

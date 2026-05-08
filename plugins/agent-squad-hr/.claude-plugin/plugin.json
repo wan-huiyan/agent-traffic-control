@@ -1,0 +1,18 @@
+{
+  "name": "agent-squad-hr",
+  "description": "Coordination toolkit for parallel Claude Code sessions sharing one repo \u2014 issue-pickup claim protocol (assignee + wip label), worktree & session-isolation pitfalls, parallel-PR conflict recovery, and subagent-integrity edge cases.",
+  "version": "1.0.0",
+  "author": {
+    "name": "wan-huiyan"
+  },
+  "repository": "https://github.com/wan-huiyan/agent-squad-hr",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "claude-code-skill",
+    "parallel-agents",
+    "coordination",
+    "worktree",
+    "subagent"
+  ]
+}
