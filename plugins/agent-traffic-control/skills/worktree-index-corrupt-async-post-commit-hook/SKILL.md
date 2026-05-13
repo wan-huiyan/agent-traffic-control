@@ -54,7 +54,7 @@ When the project has an async post-commit hook — common patterns:
 ```bash
 # hooks/post-commit
 [post-commit] Python files changed — running doc update in background...
-nohup python3 docs/generate_site.py > /dev/null 2>&1 &
+nohup python3 docs/generate_website.py > /dev/null 2>&1 &
 ```
 
 — or any hook that writes new objects/refs/files asynchronously after
@@ -140,7 +140,7 @@ If `fsck` still complains about other worktrees' indexes, run the same fix
 in each of them. The corruption can hit several worktrees simultaneously
 because they all share the object DB.
 
-## Example (the project repo, an earlier session merge orchestration)
+## Example (a client propensity repo, S130 merge orchestration)
 
 Context: 5 parallel feature-branch worktrees, sequentially squash-merging
 PRs via `gh pr merge`. The project's post-commit hook prints
@@ -210,6 +210,15 @@ eliminated the race for the rest of the merge sequence.
   This worktree-index skill covers the cross-worktree blob-GC race;
   the `git-add-u-after-...` skill covers the same-worktree index
   staging trap.
+- `git-rebase-stalls-async-post-commit-hook` — sister skill, **same
+  root cause family**, different symptom: multi-commit `git rebase
+  origin/main` stalls mid-replay with `hint: ... It has been
+  rescheduled` output, leaving stuck `rebase-merge` directories that
+  `git rebase --abort` does NOT clear. Each rebase-applied commit
+  fires the hook; the hook's spawned background subprocess races
+  git's atomic apply machinery. Fix: `git -c core.hooksPath=/dev/null
+  rebase origin/main`. Distinct symptom from the cross-worktree blob
+  GC race covered here.
 - `gh-pr-merge-worktree-checkout-trap` — *different* problem: gh refuses
   to delete a remote branch that's checked out in a sibling worktree.
 - `using-git-worktrees` / `git-worktree` — general worktree workflow.
