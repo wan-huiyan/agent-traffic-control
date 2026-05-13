@@ -161,9 +161,9 @@ Three layers, in order of cheapness:
    ```python
    # tests/test_unique_sections.py
    import pytest
-   PRIMARY_ROUTES = ["/", "/actions", "/drivers", "/monitor", "/explorer", ...]
+   PRIMARY_ROUTES = ["/", "/actions", "/drivers", "/monitor", "/library/explorer", ...]
    UNIQUE_SECTIONS = {
-       "Cohort Fingerprint": "/explorer",
+       "Cohort Fingerprint": "/library/explorer",
        "Pipeline by Propensity": "/",
        # ...
    }
@@ -187,31 +187,31 @@ Three layers, in order of cheapness:
    patterns. If any apply to the source template you're forking, port the
    move forward in your PR.
 
-## Worked example (an enrollment-propensity dashboard, 2026-05-07)
+## Worked example (Barry University propensity dashboard, 2026-05-07)
 
 Architecture:
-- `a Cloud Run service` Cloud Run service serves multiple dashboard routes.
+- `barry-propensity-pulse` Cloud Run service serves multiple dashboard routes.
 - Sidebar IA went through Phase 5 (4 tabs) → Phase 6 (5 tabs: Overview /
   Actions / Drivers / Monitor / Library) over ~24h via 4 PRs.
 
 Two of those PRs collided semantically:
 
 - **PR #296 (mover, merged 2026-05-06 21:01 UTC)**: "Move Cohort Fingerprint
-  radar /methods → /explorer." Removed `<h2>Cohort Fingerprint</h2>`
-  + radar `<div>` from `methods.html`; added them to `explorer.html`.
+  radar /library/methods → /library/explorer." Removed `<h2>Cohort Fingerprint</h2>`
+  + radar `<div>` from `library_methods.html`; added them to `library_explorer.html`.
 - **PR #303 (forker, merged 2026-05-06 23:48 UTC)**: "Promote Methods page to
   top-level Drivers tab." Created new `drivers.html` as a near-copy of the
-  *pre-#296* `methods.html` (which still had the radar block).
-  Also flipped `/methods` to a 302-redirect handler (→ `/drivers`).
+  *pre-#296* `library_methods.html` (which still had the radar block).
+  Also flipped `/library/methods` to a 302-redirect handler (→ `/drivers`).
 
 GitHub squash-merge of #303 reported "Mergeable" because the textual diff was:
 - `+ templates/drivers.html` (new file)
-- `- {old methods.html content}` / `+ {redirect handler}` (in `app.py`)
-- `~ templates/methods.html` (other minor changes)
+- `- {old library_methods.html content}` / `+ {redirect handler}` (in `app.py`)
+- `~ templates/library_methods.html` (other minor changes)
 
-No textual collision with `explorer.html` (which #296 had modified).
-Result: `/explorer` shows the radar (PR #296 ✓), and `/drivers` ALSO
-shows the radar (PR #303's literal copy of pre-#296 `methods.html`).
+No textual collision with `library_explorer.html` (which #296 had modified).
+Result: `/library/explorer` shows the radar (PR #296 ✓), and `/drivers` ALSO
+shows the radar (PR #303's literal copy of pre-#296 `library_methods.html`).
 
 User-visible: "this looks nothing like the mockup; I see Cohort Fingerprint
 twice." Tests stayed green because each route had its own test file and
@@ -219,9 +219,9 @@ neither asserted cross-route uniqueness.
 
 Diagnostic:
 ```sh
-grep -rln 'cohort-radar-chart' <analytics_pkg>/cloudrun/client_dashboard/templates/
+grep -rln 'cohort-radar-chart' goal_term_enrollment/cloudrun/cr_client_dashboard/templates/
 # → drivers.html       (incident)
-# → explorer.html
+# → library_explorer.html
 ```
 
 Render confirmation:
@@ -229,22 +229,22 @@ Render confirmation:
 DASHBOARD_USE_MOCK=true python3 -c "
 from app import app
 with app.test_client() as c:
-    for r in ['/drivers', '/explorer']:
+    for r in ['/drivers', '/library/explorer']:
         h = c.get(r).data.decode()
         print(r, 'count:', h.count('cohort-radar-chart'))
 "
 # /drivers count: 1
-# /explorer count: 1
+# /library/explorer count: 1
 ```
 
 Fix: deleted the radar `<div>` block from `drivers.html` (lines 90-103),
-replaced with a `{# moved to /explorer per IA brief / PR #296 #}`
+replaced with a `{# moved to /library/explorer per IA brief / PR #296 #}`
 comment. Drive-by: updated `test_library_methods_does_not_call_get_cohort_fingerprint`
 to expect the post-#303 redirect-shape (302 → /drivers) instead of the stale
 200 it had.
 
-Shipped as PR #317 (id-dq), squash-merged + redeployed pulse rev
-`00010-bt2`. Post-fix render: `/drivers` count = 0; `/explorer`
+Shipped as PR #317 (cat7-7dq), squash-merged + redeployed pulse rev
+`00010-bt2`. Post-fix render: `/drivers` count = 0; `/library/explorer`
 count = 1.
 
 ## Notes

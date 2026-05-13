@@ -168,3 +168,7 @@ specific branch), cherry-pick the auth commit onto the target worktree.
 - `using-git-worktrees` — creating worktrees safely
 - `worktree-historical-test-replay-missing-dirs` — pytest exit 4 in worktrees
   when historical SHAs reference paths that no longer exist
+- `worktree-outer-ls-mistaken-for-main-state` — sister gotcha: `ls /outer/repo/`
+  from inside a worktree shows the outer working tree's branch (which can be ANY
+  sibling worktree's branch), not main; use `git ls-tree origin/main <path>` to
+  verify what's actually on main
