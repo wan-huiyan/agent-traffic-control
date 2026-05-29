@@ -1,7 +1,7 @@
 ---
 name: synthetic-id-collision-rebase
 description: |
-  Fix the "I claimed id-bg, they claimed id-bg, theirs merged first" failure
+  Fix the "I claimed cat7-7bg, they claimed cat7-7bg, theirs merged first" failure
   mode when rebasing a PR after parallel sessions land mid-flight. Use when:
   (1) rebasing a stale PR onto current main produces a conflict in an append-only
   register file (tracker entries, ADR `NNNN-` prefixes, migration filenames, OpenAPI
@@ -12,31 +12,34 @@ description: |
   Code sessions share a working tree and each picked "next free letter" from their
   local view of the file. Prescribes a reroll workflow: scan ALL taken IDs in
   current main, pick truly-next-free, replay only your entry under the new ID,
-  regenerate any derived artifacts (site, indexes), force-push.
+  regenerate any derived artifacts (site, indexes), force-push. Also covers the
+  variant where git splits the conflict boundary mid-argument-list of a multi-line
+  Python function call, leaving an orphaned partial call that causes a SyntaxError
+  far from the conflict site — requires ast.parse() verification after resolution.
 author: Claude Code
-version: 1.0.0
-date: 2026-04-27
+version: 1.1.0
+date: 2026-05-13
 ---
 
 # Synthetic ID Collision During Multi-Session PR Rebase
 
 ## Problem
 
-You opened a PR that adds an entry to an append-only register — `Item("id-bg", ...)` in a roadmap tracker, `0017-foo.md` ADR, `V025__add_index.sql` migration, `## 144. ...` in `lessons.md`, `errcode: "E_QUOTA"` in an error catalog. You picked the ID by reading the file and grabbing the next free slot.
+You opened a PR that adds an entry to an append-only register — `Item("cat7-7bg", ...)` in a roadmap tracker, `0017-foo.md` ADR, `V025__add_index.sql` migration, `## 144. ...` in `lessons.md`, `errcode: "E_QUOTA"` in an error catalog. You picked the ID by reading the file and grabbing the next free slot.
 
 Meanwhile, a parallel session — or a co-author, or your own work in another worktree — also picked the same ID. **Their PR merged first.** Now your PR is `mergeable: CONFLICTING / DIRTY`, and even after reading their version, the conflict isn't really about content alignment — it's that **the synthetic ID itself is taken**. A 3-way merge that "accepts both sides" produces two rows with identical IDs, which violates the file's primary key.
 
 This is a particularly nasty failure because:
 1. The conflict resolution `--theirs` keeps their entry under the ID you wanted; your work is silently dropped.
 2. The conflict resolution `--ours` overwrites their already-merged entry; your work shows up under their ID, blowing away their data.
-3. The naive "merge both" appends two `id-bg` rows; tooling that keys on the ID picks the first, hides the second.
+3. The naive "merge both" appends two `cat7-7bg` rows; tooling that keys on the ID picks the first, hides the second.
 
 ## Context / Trigger Conditions
 
 All four hold:
 1. Your PR is conflicting after a mid-flight merge from another branch (often: another Claude Code session sharing the same working tree).
 2. The conflicting file is an **append-only register** keyed by a synthetic ID, where the ID is supposed to be unique. Common patterns:
-   - Roadmap/backlog trackers: `Item("id-bg", ...)`, `Item("id-bh", ...)`
+   - Roadmap/backlog trackers: `Item("cat7-7bg", ...)`, `Item("cat7-7bh", ...)`
    - ADRs: filename prefix `NNNN-` (`0016-foo.md`, `0017-bar.md`)
    - DB migration files: `V025__create_users.sql`, `V026__add_index.sql`
    - Sequential lessons: `## 142. ...`, `## 143. ...` in `lessons.md`
@@ -58,13 +61,13 @@ git diff --name-only --diff-filter=U   # which files conflict
 grep -n "<<<<<<<\|=======\|>>>>>>>" <register-file> | head -20
 ```
 
-If you see your `Item("id-bg", ...)` and their `Item("id-bg", ...)` in the same conflict hunk under the same key, you have a namespace collision, not a content collision.
+If you see your `Item("cat7-7bg", ...)` and their `Item("cat7-7bg", ...)` in the same conflict hunk under the same key, you have a namespace collision, not a content collision.
 
 ### Step 2 — Find the truly-next-free ID on current main
 
 ```bash
 # For tracker/Item-style files
-grep -oE "id-b[a-z]" docs/generate_tracker.py | sort -u
+grep -oE "cat7-7b[a-z]" docs/generate_roadmap_backlog.py | sort -u
 # Pick the next letter alphabetically: if ..bj is taken, you take bk
 
 # For ADR files
@@ -100,9 +103,9 @@ If your branch had multiple commits, cherry-pick each substantive commit, then a
 The site/HTML/openapi/index file regenerator must run against the post-rebase state, not the pre-rebase state. The file SHA pre-regen will mismatch what's on main even if your register entry's content is identical:
 
 ```bash
-python3 docs/generate_site.py             # tracker → site
+python3 docs/generate_website.py             # tracker → site
 # or whatever the project's regen command is
-git add docs/generate_tracker.py docs/site/
+git add docs/generate_roadmap_backlog.py docs/site/
 git commit -m "chore(tracker): add <new-id> for <feature> (PR #N reroll)"
 ```
 
@@ -143,14 +146,63 @@ gh pr merge <N> --squash --delete-branch
 
 This session, 2026-04-27:
 
-- Opened PR #118 with `id-bg` for "an earlier session docs+tests carry-over" at 15:11 UTC
-- Parallel session opened a different PR with `id-bg` for "an earlier session Run 2 + privacy-regulation fix" — merged first at 14:29 UTC
-- Subsequent PRs took `id-bh` (Streamlit decommission), `id-bi` (deposit-optional), `id-bj` (an earlier session handoff) on main
-- Rebased PR #118 → conflict on `Item("id-bg", ...)` block + 3 site files
-- Reset to origin/main, cherry-picked substantive commit (4 docs/test files), added new commit with `id-bk` + regenerated `docs/site/{index,roadmap}.html`
+- Opened PR #118 with `cat7-7bg` for "S108 docs+tests carry-over" at 15:11 UTC
+- Parallel session opened a different PR with `cat7-7bg` for "S108 Run 2 + FERPA fix" — merged first at 14:29 UTC
+- Subsequent PRs took `cat7-7bh` (Streamlit decommission), `cat7-7bi` (deposit-optional), `cat7-7bj` (S108 handoff) on main
+- Rebased PR #118 → conflict on `Item("cat7-7bg", ...)` block + 3 site files
+- Reset to origin/main, cherry-picked substantive commit (4 docs/test files), added new commit with `cat7-7bk` + regenerated `docs/site/{index,roadmap}.html`
 - Force-pushed → CLEAN → merged
 
-End state: main has `id-bg` (parallel session's work), `id-bh`/`bi`/`bj` (subsequent sessions), `id-bk` (mine). All entries preserved, all distinct IDs, regenerated site reflects all of them.
+End state: main has `cat7-7bg` (parallel session's work), `cat7-7bh`/`bi`/`bj` (subsequent sessions), `cat7-7bk` (mine). All entries preserved, all distinct IDs, regenerated site reflects all of them.
+
+## Variant: Mid-Argument-List Conflict Split (Python multi-line calls)
+
+When the conflicting file is a Python source file with multi-line function calls (e.g., a tracker list of `Item("cat7-7ks", "label", ...)` entries), git's conflict boundary can split inside a single call's argument list rather than between calls.
+
+**What happens:**
+
+Both branches append `Item("cat7-7ks", ...)` near the same location. git's `=======` separator falls between the two new entries, but the *next* existing item's first line (`Item("cat7-7kr", "S196 — ..."`) appears in **both** the HEAD section and the incoming section (git included it as shared context on each side). A naive "take both sides" regex resolution outputs:
+
+```
+Item("cat7-7kt", ...)   # your renumbered entry — correct
+Item("cat7-7kr",        # orphaned first line — NO arguments, NO closing paren
+Item("cat7-7kt", ...)   # duplicate — wrong
+Item("cat7-7kr", "S196 — ...", ...)  # the real full entry — correct
+```
+
+The `SyntaxError` this produces manifests at the **list-close bracket** (`]`) many lines later, not at the broken line — because Python sees an unclosed `(` started by the orphan.
+
+**Detection:**
+
+```bash
+python3 -c "
+import ast, sys
+with open('docs/generate_roadmap_backlog.py') as f:
+    src = f.read()
+try:
+    ast.parse(src)
+    print('OK')
+except SyntaxError as e:
+    print(f'SyntaxError at line {e.lineno}: {e.msg}')
+"
+```
+
+Always run `ast.parse()` after resolving conflicts in Python files — the SyntaxError line number points at the list-close, not the orphan. The orphan is the first `Item("cat7-7kr",` line immediately followed by the next `Item(` without any argument lines between them.
+
+**Fix:**
+
+Scan for the orphaned line pattern and delete it:
+
+```bash
+# Find: Item("cat7-7kr", immediately followed by Item("cat7-7kt", (no args in between)
+grep -n 'Item("cat7-7kr"' docs/generate_roadmap_backlog.py
+# Visually confirm the next non-blank line is Item("cat7-7kt", not an argument
+# Then delete the orphan line, re-run ast.parse(), regenerate site
+```
+
+**Key insight:** git includes the first line of the *shared context after the conflict block* in both conflict sides. Any "take both sides" strategy without per-line argument-count validation will duplicate that shared line.
+
+**Prevention (pre-rebase):** If your new `Item(...)` and the incoming `Item(...)` land adjacent in the file, rename your ID in a separate commit before rebasing (changes the exact insertion point, so git's conflict boundary shifts away from the argument-list interior). The `barryu-pr-conflict-site-regen` skill's Step 2a/2e covers the renumber; the cleanest path is to abort early and pre-rename.
 
 ## Notes
 
@@ -158,7 +210,7 @@ End state: main has `id-bg` (parallel session's work), `id-bh`/`bi`/`bj` (subseq
 - **The collision is invisible until merge time.** Both sessions' local view of the file shows their ID as "next free." Only when one merges first does the other's ID become unavailable. There's no useful pre-merge linter for this — the truth lives on origin/main.
 - **Append-only registers are vulnerable; replace-style files are not.** A YAML config edit doesn't have this issue because the same key on both sides naturally 3-way-merges. Sequential ID assignment is what creates the namespace.
 - **For ADR-style files (one ADR per filename), the collision is at the filesystem level**: `0017-feature-A.md` from your branch + `0017-feature-B.md` from theirs both want to exist as the 17th ADR. Resolution is the same: rename yours to `0018-feature-A.md`.
-- **For lessons.md sequential numbering**: if you're at `## 144` and they shipped `## 144` first, you become `## 145`. The reroll edit is in one place but you may need to update cross-references (`L-an earlier session-144` → `L-an earlier session-145`) elsewhere.
+- **For lessons.md sequential numbering**: if you're at `## 144` and they shipped `## 144` first, you become `## 145`. The reroll edit is in one place but you may need to update cross-references (`L-S108-144` → `L-S108-145`) elsewhere.
 - **See also:** `pr-conflict-from-mid-flight-merges` skill covers the broader recipe for any mid-flight-merge conflict; this skill specializes the namespace-collision case where the file conflict isn't really about content.
 
 ## References

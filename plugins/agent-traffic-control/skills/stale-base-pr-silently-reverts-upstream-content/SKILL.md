@@ -24,8 +24,8 @@ description: |
   covers the post-merge silent-regression case where NEITHER PR's CI flagged
   the overwrite.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-12
+version: 1.1.0
+date: 2026-05-14
 ---
 
 # Stale-Base PR Silently Reverts Upstream Content via Textual Overlap
@@ -91,6 +91,59 @@ Adjacent symptoms:
   numbers
 - The cohort-size discrepancy is small enough not to look like a bug at a
   glance (e.g. `50%` → `48%`, `n=117` → `n=408`)
+
+## Variant: Complete-File Stale-Base Revert
+
+A more severe form where PR A does a **wholesale file rewrite** (hundreds of
+lines added/removed, entirely new structure) and PR B's stale version of the
+same file is the old design. The merge doesn't revert N specific lines — it
+restores the entire pre-PR-A file to the live template.
+
+**Additional trigger conditions for this variant:**
+
+- PR A was a full template rewrite (e.g. 900+ net lines, new HTML structure,
+  new CSS class names, new section layout) — not just value updates.
+- PR B's description focuses on OTHER files (tab strip, index grid, CSS
+  constants) and only mentions the shared file incidentally ("fixed CSS
+  grid" / "extracted inline styles") — no mention of structural changes.
+- PR B's git stat for the shared file shows a large `++++--` pattern
+  (`1155 +++++---------------`) but the net effect restores the old design.
+
+**Detection signals (different from partial-overlap variant):**
+
+- User reports "I don't see PR A's changes in the live dashboard" — the
+  symptom is a COMPLETE absence of the new design, not a subtle value mismatch.
+  Initial suspicion is usually deploy lag or browser cache (check those first);
+  if the revision is confirmed serving the post-B-merge image, look for revert.
+- `git diff <PR-A-merge>..origin/main -- <file>` shows the net effect is
+  removing ALL of PR A's additions and restoring pre-PR-A content:
+  ```bash
+  git diff 09ea9b7d..bf5fb3e6 -- templates/library_roadmap.html | grep "^-" | wc -l
+  # Returns ~911 lines removed (PR A's entire new design)
+  ```
+- The rendered page has the old layout, old section structure, and old CSS
+  class names — not just stale numbers within new copy.
+
+**Recovery for complete-file revert (different from partial-overlap):**
+
+When PR B's version of the file IS the pre-PR-A file, targeted line edits
+will not work — there are too many missing lines. Instead:
+
+```bash
+git worktree add .claude/worktrees/recover-A-after-B -b fix/recover-A-after-B origin/main
+# Restore PR A's entire file state
+git checkout <PR-A-merge-commit> -- path/to/template.html
+# Then apply PR B's LEGITIMATE changes to that file (the minor CSS fixes etc.)
+# Read PR B's diff for the specific file to identify what, if anything, was
+# a genuine improvement vs. stale-base artifact
+git diff <pre-B-base>..<PR-B-merge> -- path/to/template.html | grep "^+" | head -30
+```
+
+Note: the existing Step 3 says "Do NOT `git checkout <PR-A-merge> -- file`"
+— that rule applies to partial-overlap reverts where PR B had legitimate
+structural changes. For complete-file reverts where PR B's file = pre-PR-A
+content, restoring PR A's file wholesale is the right approach; then layer
+PR B's genuine improvements on top.
 
 ## Solution
 
@@ -259,6 +312,42 @@ against post-rebase main. Always content-audit recent number-touching
 merges against the current main post-sibling-merge. The cost is one
 `git show + grep` invocation; the alternative is a silent regression
 that takes longer to detect than to prevent.
+
+## Example — barryU /library/roadmap visual rewrite reverted by polish PR (2026-05-14)
+
+**Setup**: PR #848 (`feat(library): visual refresh of /library/roadmap from design bundle`)
+was a wholesale rewrite of `templates/library_roadmap.html` (+1155/-258 lines):
+new `roadmap-hero` header with engagement-balance aside (98h/10h/20h), Beat 01
+"recently shipped" section (9 theme cards), Beat 02 gap illustration with filmstrip/
+polaroid layout, phase-chain SVG, and version timeline. Merged at 00:21:47Z.
+
+PR #850 (`style(library): impeccable polish pass — tier index cards, distil tabs 8→5`)
+was developed from a base that predated #848. Its description focused on library index
+tiers, tab-strip reduction (8→5), and model-health text-size fixes. Roadmap was
+mentioned only as a CSS grid-column fix ("fixed `grid-template-columns` to base
+`.library-index-grid`"). PR #850's `library_roadmap.html` was the pre-#848 file.
+Merged at 00:53:40Z, ~32 minutes after #848.
+
+**Detection**: User reported "I merged PR #848 but don't see its changes in the live
+dashboard." Initial check confirmed revision `barry-propensity-pulse-00148-cql`
+(PR #850's image `bf5fb3e`) was serving 100% of traffic — deploy was correct. Browser
+cache was the first suspect; but the deploy log also showed PR #850 was the most recent
+deploy. Investigation of `git diff 09ea9b7d bf5fb3e6 -- templates/library_roadmap.html`
+revealed 911 lines removed — PR A's entire new design gone.
+
+**Distinguishing signal from partial-overlap variant**: the symptom was "entire page
+looks completely different / PR A's design absent" rather than "specific numbers look
+wrong." The PR #850 stat line (`1155 +++++---------------`) looked like a big edit but
+the net was a near-total revert. PR description gave no hint of structural change.
+
+**Recovery**: `git checkout 09ea9b7d -- templates/library_roadmap.html` to restore PR
+A's full template, then apply PR B's legitimate CSS grid fix (`grid-template-columns`)
+on top. Separate fix PR opened by the original session.
+
+**Lesson**: When a PR with a misleading "polish pass" label touches a file another PR
+recently rewrote, immediately diff the net effect — `git diff <A>..HEAD -- <file>` —
+before shipping. A `1155 +++++---------------` stat on a file that just got a 1155-line
+rewrite in the prior PR is the tell.
 
 ## Notes
 

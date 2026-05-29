@@ -1,21 +1,29 @@
 ---
 name: stacked-pr-base-branch-deletion-auto-closes-dependent
 description: |
-  Recover from the trap where deleting a base PR's branch (via `gh api -X DELETE
-  refs/heads/<branch>`) auto-closes any open dependent stacked PR, and the closed
-  PR cannot be reopened or retargeted. Use when: (1) you set up a stacked PR
-  pair (PR2's `base` field = PR1's branch instead of `main`), (2) you merged PR1
-  via squash, (3) you then deleted PR1's remote branch via the API (because
-  `gh pr merge --delete-branch` failed locally with the worktree-checkout-trap
-  and you used the API as a workaround), (4) the dependent PR2 is now reported
-  as `state: CLOSED` even though you never closed it, (5) `gh pr reopen N` fails
-  with `Could not open the pull request`, (6) `gh pr edit N --base main` fails
-  with `Cannot change the base branch of a closed pull request`. The only
-  recovery is to open a fresh PR from the same head branch with base=main.
-  Sister skill to `gh-pr-merge-worktree-checkout-trap` (the upstream cause).
+  Recover from the trap where deleting a base PR's branch auto-closes any open
+  dependent stacked PR, and the closed PR cannot be reopened or retargeted. Use
+  when: (1) you set up a stacked PR pair (PR2's `base` field = PR1's branch
+  instead of `main`), (2) you merged PR1 via squash, (3) PR1's remote branch
+  got deleted — via ANY route: `gh pr merge <N> --squash --delete-branch`,
+  `gh api -X DELETE refs/heads/<branch>`, or `gh pr merge` followed by separate
+  branch cleanup — (4) the dependent PR2 is now reported as `state: CLOSED`
+  even though you never closed it, (5) `gh pr reopen N` fails with
+  `Could not open the pull request`, (6) `gh pr edit N --base main` fails with
+  `Cannot change the base branch of a closed pull request`. The only recovery
+  for the stacked-PR case is to open a fresh PR from the same head branch with
+  base=main. **v1.2.0 (2026-05-19) adds the recoverable single-PR variant**:
+  if the deleted branch was the HEAD of a single, in-flight, NEVER-MERGED PR
+  (e.g. user deleted the branch after a failed merge attempt that returned
+  `GraphQL: Pull Request is not mergeable` because `mergeable: UNKNOWN`),
+  the PR closes with `mergedAt: null, mergeCommit: null` and is RECOVERABLE
+  via `git push origin <branch>` + `gh pr reopen <N>` — no fresh PR needed.
+  Root-cause prevention: never `gh api -X DELETE` a branch until
+  `gh pr view <N> --json state` reports exactly `MERGED`. Sister skill to
+  `gh-pr-merge-worktree-checkout-trap` (one upstream cause).
 author: Claude Code
-version: 1.0.0
-date: 2026-05-08
+version: 1.2.0
+date: 2026-05-19
 ---
 
 # Stacked PR: Base-Branch Deletion Auto-Closes the Dependent PR
@@ -80,9 +88,15 @@ You are in this trap if **all** of these are true:
 1. You used a stacked PR setup (PR2 explicitly opened with `--base <PR1-branch>`,
    not `main`).
 2. PR1 squash-merged (PR1 is in `state: MERGED`).
-3. You deleted PR1's remote branch via `gh api -X DELETE` (the API), not
-   via `gh pr merge --delete-branch` (which would have done it through
-   GitHub's UI flow that handles stacked retarget).
+3. PR1's remote branch got deleted via **any programmatic route**:
+   - `gh pr merge <N> --squash --delete-branch` (the normal merge-and-cleanup)
+   - `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>` (the
+     workaround when `gh pr merge --delete-branch` failed locally with the
+     worktree-checkout-trap)
+   - Any other CLI/API-driven branch deletion
+   Only the GitHub web UI's "Delete branch" button on the merged PR page
+   triggers stacked-PR auto-retarget. Every other route auto-closes the
+   dependent.
 4. PR2 is now `state: CLOSED` with `mergedAt: null` and `closed: true`.
 5. `gh pr reopen <PR2>` fails with `Could not open the pull request`.
 
@@ -125,6 +139,65 @@ gh pr merge <NEW_PR> --squash
 Reviews and comments on the dead PR are NOT auto-migrated. Leave a comment
 on the new PR that links to the dead PR's review thread so the audit trail
 stays connected.
+
+## Variant: single, non-stacked PR — head-branch deleted mid-merge (RECOVERABLE)
+
+Same mechanism, different scenario, different recovery:
+
+You have a SINGLE PR (not stacked). You try to merge it. GitHub returns
+`GraphQL: Pull Request is not mergeable (mergePullRequest)` because the
+PR's `mergeable: UNKNOWN, mergeStateStatus: UNKNOWN` — GitHub hadn't
+finished computing mergeability for a recent push. You assume the merge
+succeeded silently anyway and proactively run `gh api -X DELETE
+repos/<owner>/<repo>/git/refs/heads/<branch>` to "clean up". The PR
+state flips to `CLOSED` with `mergedAt: null, mergeCommit: null` — the
+branch deletion auto-closed the PR before any merge happened.
+
+Unlike the stacked case above, **this is recoverable** because:
+- The PR was never merged (so no irreversible "merged with wrong base" record exists)
+- The PR has no dependents (so no closed-PR-with-dependent-PR2 chain)
+- GitHub allows `gh pr reopen <N>` on a PR closed by branch deletion
+  (it doesn't apply the "cannot reopen merged PRs" rule here because
+  the PR isn't merged — just closed)
+
+Recipe:
+
+```bash
+# Verify: PR is CLOSED but never merged
+gh pr view <N> --json state,mergedAt,mergeCommit
+# {"state": "CLOSED", "mergedAt": null, "mergeCommit": null}
+
+# 1. Re-push the local branch (it's still in your worktree)
+git push origin <branch>
+# remote: ... * [new branch] <branch> -> <branch>
+
+# 2. Reopen the PR — this works because PR was closed-not-merged
+gh pr reopen <N>
+# ✓ Reopened pull request ...#<N>
+
+# 3. Wait for mergeability to compute
+sleep 5
+gh pr view <N> --json mergeable,mergeStateStatus
+# {"mergeStateStatus": "CLEAN", "mergeable": "MERGEABLE"}
+
+# 4. Now merge normally
+gh pr merge <N> --squash --subject "..." --body "..."
+```
+
+The PR's full history (commits, comments, reviews, labels) survives the
+close-and-reopen cycle intact. No need to create a fresh PR.
+
+**Root-cause prevention for this variant: never call `gh api -X DELETE`
+on a branch until `gh pr view <N> --json state` reports `MERGED` (not
+`OPEN`, not `CLOSED`, not `UNKNOWN`).** A failed merge attempt that
+returns `mergeable: UNKNOWN` is GitHub still computing — wait, retry the
+merge, don't take recovery actions yet. Quick check:
+
+```bash
+gh pr view <N> --json state --jq .state   # must be exactly "MERGED"
+```
+
+Then and only then is the branch safe to delete.
 
 ## Prevention (recommended workflow)
 
@@ -192,8 +265,14 @@ gh pr diff <NEW_PR> | head -50
 - **The auto-close on dependent PRs is asymmetric with the UI delete-branch
   button.** If you use the GitHub UI's "Delete branch" button on a merged
   PR's page, GitHub generally auto-retargets dependent open PRs to the
-  default branch instead of closing them. Only the API-direct ref delete
-  triggers the close cascade.
+  default branch instead of closing them. **Every other deletion route
+  triggers the close cascade**, including `gh pr merge <N> --delete-branch`
+  (the normal CLI merge-and-cleanup flow) and `gh api -X DELETE refs/heads/<branch>`.
+  Earlier versions of this skill suggested `gh pr merge --delete-branch`
+  was safe — that's wrong; it routes through the same Git Refs API
+  deletion and triggers the cascade. The UI button is the sole exception
+  because it goes through a different code path that does the retarget
+  before the delete.
 - **GitHub does NOT silently reopen** dependent PRs even if you re-create
   the deleted ref afterwards (`gh api -X PUT refs/heads/feature-pr1`). The
   closed state is sticky.
@@ -223,7 +302,7 @@ Sequence that hit the trap:
    (the worktree-checkout-trap; merge succeeded on GitHub, only local
    cleanup failed).
 3. To clean up the orphaned remote PR1 branch, ran:
-   `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/worktree-chatbox-with-data`
+   `gh api -X DELETE repos/wan-huiyan/.../git/refs/heads/worktree-chatbox-with-data`
 4. **Within seconds, PR #461 transitioned to `state: CLOSED`.** No notification.
 5. `gh pr reopen 461` → `Could not open the pull request`.
 6. `gh pr edit 461 --base main` → `Cannot change the base branch of a closed PR`.
@@ -233,6 +312,36 @@ Sequence that hit the trap:
 
 Total recovery time: ~5 minutes. Could have been zero with Pattern A
 (don't delete PR1's branch until PR2 is also merged).
+
+## Example — 2026-05-18 amc-iql-sync session (the `gh pr merge --delete-branch` variant)
+
+Two-PR stack:
+- PR #8 (121 IQLs crawled), `base: main`, `head: amc-iql-sync/2026-05-18`
+- PR #10 (streaming writes + folder split), `base: amc-iql-sync/2026-05-18`,
+  `head: amc-iql-sync/streaming-and-folders`
+
+Sequence that hit the trap:
+
+1. PR #8 squash-merged via `gh pr merge 8 --squash --delete-branch`. ✓
+   No worktree conflict; the merge AND the branch deletion both succeeded
+   cleanly through gh — no API workaround used.
+2. **Within seconds, PR #10 transitioned to `state: CLOSED`** with
+   `mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`.
+3. `gh pr edit 10 --base main` → `Cannot change the base branch of a closed PR`.
+4. `gh pr reopen 10` → `Could not open the pull request`.
+5. **Recovery:** `git rebase origin/main` on `amc-iql-sync/streaming-and-folders`
+   (git auto-skipped the duplicate squashed commit, leaving just the new
+   code on top of main), force-push, `gh pr create --base main --head
+   amc-iql-sync/streaming-and-folders` → PR #11. Merged successfully.
+
+**Why this case matters:** the earlier `2026-05-08 chatbox` example
+established the trap for the `gh api -X DELETE` route only. This case
+proves the trap fires for `gh pr merge --delete-branch` too — the
+"normal" CLI flow. The skill's trigger conditions were updated in v1.1.0
+to reflect this.
+
+Total recovery time: ~3 minutes (no worktree-checkout-trap to untangle
+first; just rebase + new PR).
 
 ## References
 

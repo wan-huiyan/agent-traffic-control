@@ -1,26 +1,31 @@
 ---
 name: subagent-pre-existing-misattribution
 description: |
-  Catch per-task subagent reviewers misattributing test failures CAUSED by an
-  earlier task as "pre-existing baseline" failures. Use when: (1) a multi-task
-  subagent-driven plan reports "N pre-existing failures, unrelated" across
-  consecutive tasks and the count never changes, (2) an architectural / final
-  reviewer at the end catches assertions that should have been updated 5 tasks
-  ago, (3) an implementer reports "verified pre-existing on clean tree by
-  running git stash" but the breaking change is already committed on the
-  branch, (4) you're building or executing a multi-task plan with subagent
-  reviewers that compare suite-wide pass/fail counts to a "baseline." Root
-  cause: `git stash` only stashes UNCOMMITTED changes — it does NOT reset to
-  mainline. Stashing on a branch where the offending commit has already landed
-  leaves the working tree identical to the branch state. The "clean tree"
-  check verifies nothing. Fix: subagent reviewers must verify "pre-existing"
-  by `git diff origin/main` or `git show origin/main:<test_file>` for the
-  specific failing tests — not by `git stash`. The orchestrator should
-  challenge any "verified on clean tree" claim that doesn't cite the exact
-  ref.
+  Catch subagent reviewers misattributing test failures across the
+  pre-existing / PR-introduced boundary — in BOTH directions. Use when:
+  (1) a multi-task subagent-driven plan reports "N pre-existing failures,
+  unrelated" across consecutive tasks and the count never changes,
+  (2) an architectural / final reviewer at the end catches assertions that
+  should have been updated 5 tasks ago, (3) an implementer reports "verified
+  pre-existing on clean tree by running git stash" but the breaking change is
+  already committed on the branch, (4) you're building or executing a
+  multi-task plan with subagent reviewers that compare suite-wide pass/fail
+  counts to a "baseline", (5) **a single code-review subagent reviewing one
+  PR flags failures as "Critical / PR-introduced" and reasons "the PR
+  correctly updated X but forgot the test" — without ever diffing against
+  origin/main** (the over-flagging mirror image: the reviewer infers
+  causation from the *current file state* and assumes your PR made a change
+  it never made). Root cause (both directions): the reviewer never compared
+  to mainline. `git stash` only stashes UNCOMMITTED changes — it does NOT
+  reset to mainline; and reading the current file state tells you nothing
+  about whether *this PR* changed it. Fix: verify the pre-existing/introduced
+  boundary with `git diff origin/main...HEAD -- <file>` (did THIS pr touch
+  it?) + `git show origin/main:<file>` (what was the value before?) +
+  running the flagged tests on a real `origin/main` checkout — not by
+  `git stash`, and not by eyeballing the working tree.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-07
+version: 1.1.0
+date: 2026-05-14
 ---
 
 # Subagent-Driven Development: Pre-Existing Failure Misattribution
@@ -57,6 +62,37 @@ $ # but reviewer reports: "verified failures pre-existing on clean tree"
 ```
 
 The reviewer isn't lying — `git stash` ran and the suite ran "on the clean tree" — but that "clean tree" is the post-breaking-change branch state, not mainline.
+
+## Variant: the over-flagging mirror image (single-PR code-review agent)
+
+The original pattern is **under-flagging**: a reviewer calls a PR-introduced
+failure "pre-existing." The mirror image is **over-flagging**: a single
+code-review subagent reviewing one PR calls a *pre-existing* failure
+"Critical / PR-introduced." Same root cause — the reviewer never diffed
+against `origin/main` — opposite error.
+
+The mechanism: the reviewer reads the *current file state*, sees a mismatch
+(e.g. `_ACTIONS_COLD_OPEN_HISTORICAL["a1"]["peer"] == "~5.3-7.4%"` but a test
+asserts `== "4.84%"`), and **infers** "this PR updated the value and forgot
+the test." It never checks whether the PR actually touched that value. If a
+*prior* PR changed it and left the test stale, the failure predates this PR
+entirely — but the reviewer's report says "Critical, PR-introduced, must fix
+before merge."
+
+Trigger signs for this variant:
+
+- A single `code-review` / `feature-dev:code-reviewer` subagent on **one** PR
+  (not a multi-task plan) returns a "Critical" finding phrased as *"the PR
+  correctly updated X but didn't update the test"* — note the unverified
+  assumption baked into "the PR updated X."
+- The finding cites current file contents, never a `git diff` or `git show`.
+- The flagged tests are in a file your PR's diff doesn't meaningfully touch.
+
+Don't merge on the reviewer's say-so and don't reflexively "fix" the flagged
+tests (that's scope creep onto a pre-existing bug). **Verify the boundary
+first** (see Solution). If the failures are pre-existing: leave them, note it
+in the PR test plan, and spawn a separate follow-up task for the real bug.
+The reviewer's *other* findings still stand — only the attribution was wrong.
 
 ## Solution
 
@@ -116,7 +152,7 @@ A claim of "pre-existing failures" is verified when:
 
 ## Example
 
-In one session, a 12-task plan executed via subagent-driven-development for issue #272 (Drivers tab + per-value drilldown):
+In session 2026-05-06, a 12-task plan executed via subagent-driven-development for issue #272 (Drivers tab + per-value drilldown):
 
 - Task 6 removed the Methods card from the Library hub + Methods sub-nav entry.
 - Task 6's implementer/reviewer fixed the parametrize lists they saw but missed `tests/test_loading_overlay_wiring.py` lines 109 and 133 with `assert count == 5` for `.library-card` and `.library-subtab`.
