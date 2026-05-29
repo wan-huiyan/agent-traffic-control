@@ -11,9 +11,24 @@ description: |
   `gh pr view N --json state,mergedAt`; if state=MERGED, you're done. This
   also applies to `gh pr checkout` and any other `gh` subcommand that tries
   to touch the local main branch while another worktree has it claimed.
+  v1.2.0 (2026-05-26) adds the sequential-error variant: if you re-run from
+  the main-repo worktree after the first error, you can then hit "cannot
+  delete branch <feature-branch> used by worktree at <feature-worktree>" —
+  same one-checkout-per-branch invariant, this time applied to the feature
+  branch. Cleanup order: `git worktree remove` BEFORE `git branch -D`.
+  v1.3.0 (2026-05-27) adds the `--auto --delete-branch` enable-time
+  variant: when checks are still pending, `gh pr merge N --auto --squash
+  --delete-branch` fails locally (same "main is already used by worktree"
+  message) BEFORE the auto-merge intent is registered server-side —
+  `gh pr view N --json autoMergeRequest` returns null. Workaround: drop
+  `--delete-branch` (`gh pr merge N --auto --squash`), then `git worktree
+  remove` + `git branch -D` manually after the merge lands. The post-merge
+  variant in v1.0-1.2 succeeds the merge first then chokes on cleanup;
+  this v1.3 variant chokes BEFORE the server-side enable, so verifying
+  with `--json autoMergeRequest` (not just `state`) is required.
 author: Claude Code
-version: 1.0.0
-date: 2026-04-27
+version: 1.3.0
+date: 2026-05-27
 ---
 
 # `gh pr merge` Worktree-on-Main Checkout Trap
@@ -77,6 +92,32 @@ If `state` is `OPEN` or `CLOSED` (without merge): something else went wrong.
 The worktree error is masking a real failure. Re-run the merge with `--admin`
 or check branch protection / required checks.
 
+### Step 1b (proactive alternative): Merge directly via GitHub API
+
+If you already know `gh pr merge` will fail — because you're always in a
+worktree where `main` is locked — skip `gh pr merge` entirely and call the
+GitHub REST API directly. This avoids the error and the verify-after dance:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<number>/merge \
+  --method PUT \
+  --field merge_method=squash \
+  --field commit_title="your squash commit title" \
+  --field commit_message="optional body"
+```
+
+Expected response on success:
+```json
+{"sha":"<merge-commit-sha>","merged":true,"message":"Pull Request successfully merged"}
+```
+
+`merge_method` accepts `squash`, `merge`, or `rebase`. The `commit_title` and
+`commit_message` fields only apply to the `squash` method.
+
+**Note**: this form does NOT delete the remote branch — add a separate
+`gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>` if needed,
+or rely on the repo's auto-delete-head-branches setting.
+
 ### Step 2 (optional, prevent next time): Use a non-conflicting worktree
 
 If you frequently hit this, you have two options:
@@ -88,6 +129,10 @@ out. This is the cleanest pattern.
 
 **Option B — Run `gh` from the worktree that already has `main` checked out.**
 That worktree's `git` is the one `gh` will succeed in checking out into.
+
+**Option C — Use `gh api PUT` directly** (Step 1b above) instead of `gh pr
+merge` whenever you're in a long-lived worktree session. Two-liner, no
+local checkout side-effect, no verify-after needed.
 
 Most users won't bother with prevention — the post-failure `gh pr view`
 verification is two seconds and the merge already worked.
@@ -151,11 +196,61 @@ root cause (the same long-lived worktree was still on main).
   PRs before any cleanup).
 - Same trap applies to `gh pr checkout <number>` if the target branch is
   already checked out elsewhere.
+- **Sequential-error variant (S8 2026-05-26, int_gtm_auditor):** if you
+  recognise the trap and re-run from the main-repo worktree, you can hit a
+  SECOND error on the same merge:
+  ```
+  failed to delete local branch <feature-branch>: failed to run git: error:
+  cannot delete branch '<feature-branch>' used by worktree at '<feature-worktree>'
+  ```
+  The PR is already merged at this point (gh's "already merged" message
+  precedes the error). The local cleanup is failing because the FEATURE
+  worktree still has the feature branch checked out. Recovery order
+  matters — clean up in this sequence from the main-repo worktree:
+  ```bash
+  git fetch origin
+  git pull --ff-only                            # sync main locally
+  git worktree remove ../<feature-worktree>     # release the branch
+  git branch -D <feature-branch>                # now safe to delete
+  ```
+  If you swap steps 3 and 4, the branch-delete fails for the same reason
+  the second error fired. The first error ("'main' is already used by
+  worktree") and this second error ("cannot delete branch ... used by
+  worktree") are symmetric instances of the same one-checkout-per-branch
+  invariant — first applied to `main`, then applied to the feature branch.
 - The misleading part is that gh's exit code is non-zero, which makes
   scripts treat the merge as failed and may trigger retries or rollbacks
   that aren't needed.
 - `git worktree list` is the diagnostic — find the worktree on `main` and
   decide whether to keep it.
+- **`--auto --delete-branch` enable-time variant (v1.3, S19 2026-05-27):**
+  the v1.0-1.2 variants all describe a POST-merge cleanup failure where
+  the GitHub merge already succeeded. There is a sibling PRE-merge
+  variant when checks are still pending:
+  ```
+  $ gh pr merge 88 --auto --squash --delete-branch
+  failed to run git: fatal: 'main' is already used by worktree at '...'
+  ```
+  This time the local `--delete-branch` cleanup attempt fires BEFORE the
+  auto-merge intent is registered server-side. `gh pr view N --json
+  autoMergeRequest` returns `null` (no auto-merge enabled) AND the PR
+  isn't merged. Workaround: re-run without `--delete-branch`:
+  ```bash
+  gh pr merge 88 --auto --squash
+  # then verify
+  gh pr view 88 --json autoMergeRequest,state
+  ```
+  Auto-merge enables; when checks pass the PR merges; then delete the
+  worktree + branch manually:
+  ```bash
+  git worktree remove .claude/worktrees/<feature-worktree>
+  git branch -D <feature-branch>   # may already be auto-deleted on
+                                   # remote depending on repo setting
+  ```
+  Diagnostic difference from v1.0-1.2: with the post-merge variant,
+  `gh pr view N --json state` returns `MERGED`. With this enable-time
+  variant, `state` is still `OPEN` AND `autoMergeRequest` is `null`.
+  Always check BOTH fields before concluding the PR is done.
 
 ## References
 
