@@ -1,0 +1,100 @@
+---
+name: factcheck-subagent-needs-complete-sources
+description: |
+  When dispatching a subagent to fact-check or verify a document/report/claims
+  against source material, hand it COMPLETE primary sources — never your own
+  abridged summary or partial dump. Use when: (1) you are about to launch an
+  Agent/Task subagent to "fact-check", "verify", "independently check",
+  "stress-test", or "review the claims in" a document against sources;
+  (2) you are assembling the source bundle or writing the prompt for that
+  agent; (3) a verification subagent returns a verdict like "claim X is
+  unsupported / appears in no source / looks fabricated" — before accepting it,
+  check whether the gap is in a source YOU abridged. An agent fed a partial
+  source reports confident FALSE-POSITIVE "unsupported" verdicts on exactly the
+  regions you trimmed out.
+author: Claude Code
+version: 1.0.0
+date: 2026-05-20
+---
+
+# Fact-check subagents need complete primary sources
+
+## Problem
+
+You dispatch a subagent to independently fact-check a document against its
+sources. To save context or tokens, you pass the agent a summary or partial
+dump of one source instead of the full original. The agent then reports a
+**false positive**: "Claim X is unsupported — the term appears in no source."
+The claim was actually fine; the supporting text was in the part of the source
+you abridged away.
+
+The failure is asymmetric and dangerous: a missing source region does not make
+the agent say "I can't tell." It makes the agent confidently say "unsupported"
+or "fabricated" — because absence-of-evidence reads as evidence-of-absence when
+the agent believes it holds the complete source.
+
+## Context / Trigger Conditions
+
+- About to launch an Agent/Task subagent to "fact-check", "verify",
+  "independently check", "stress-test", or "review the claims in" a document.
+- Assembling the source bundle / writing the prompt for that agent.
+- A verification subagent returns "claim X unsupported / appears nowhere /
+  fabricated / not in any source" — especially for one specific claim while
+  everything else verifies cleanly.
+
+## Solution
+
+**Prevention — when assembling the agent's sources:**
+
+1. Pass the agent the COMPLETE primary source (full file, full document dump,
+   full repo clone), not a hand-written summary of it. If a source is large,
+   give it the real artifact and let the agent read what it needs — do not
+   pre-digest.
+2. If you genuinely must abridge, say so explicitly in the prompt: name which
+   sources are partial and which sections were cut, and instruct the agent to
+   mark any verdict touching those sections UNVERIFIABLE rather than INACCURATE.
+3. Prefer pointing the agent at retrievable originals (a cloned repo, a file
+   path, a document ID it can fetch itself) over your transcription of them.
+
+**Response — when the agent flags a claim as unsupported:**
+
+4. Before accepting an "unsupported / fabricated" verdict, read the agent's own
+   report for hedges — a good agent will say "the dump I was given is partial"
+   or "this section was not in my sources." That hedge is the tell.
+5. Reconcile the flagged claim against the COMPLETE source yourself. If the
+   supporting text is in a region you abridged, the verdict is a false
+   positive — keep the original claim; do not "correct" the document.
+6. Treat genuine errors and source-gap false positives separately: apply the
+   real corrections, reject the false positive, and state plainly why each.
+
+## Verification
+
+After reconciling: every accepted correction traces to the agent finding a real
+discrepancy against COMPLETE source text; every rejected flag traces to a
+source region the agent never received. No document claim is changed on the
+strength of a source the agent only saw partially.
+
+## Example
+
+A planning-review document was fact-checked by a dispatched subagent against
+three sources: two cloned repos (complete) and a Google Doc supplied as a
+hand-written Markdown dump. The dump reproduced one section verbatim but
+abridged another. The agent verified almost everything, but flagged one
+claim — "feature X is mentioned in the source" — as "X appears nowhere in any
+source, likely fabricated." The agent honestly noted its dump was partial.
+Checking the full Google Doc showed the abridged-out section did contain X. The
+claim was correct; the false positive came entirely from the abridged dump. Fix
+applied: the document claim stood, and the lesson was to attach the real
+document next time, not a transcription.
+
+## Notes
+
+- A well-built verification agent self-flags incomplete sources. Read the
+  agent's caveats, not just its verdicts.
+- This is the subagent-dispatch analogue of "absence of evidence is not
+  evidence of absence" — scoped to: the absence may be in YOUR source bundle,
+  not the world.
+- See also: `review-panel-pre-dispatch-claim-recheck` (re-derive the
+  load-bearing claim before dispatching reviewers);
+  `parallel-rewrite-with-claims-inventory-factcheck` (fact-check a rewrite
+  against source DATA, not a derived inventory).

@@ -13,8 +13,8 @@ description: |
   Fix: branch off current main, cherry-pick the stranded commits, open a
   follow-up PR.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-06
+version: 1.1.0
+date: 2026-05-19
 ---
 
 # Follow-up commits stranded after PR squash-merge
@@ -116,6 +116,26 @@ If the file content matches the *intended end state* (not the original-commit st
 - The closed branch is not garbage-collected immediately — you have time to recover. But the longer you wait, the more main may diverge and require non-trivial conflict resolution during cherry-pick.
 - If the stranded commits touched a file that was *also* edited on main between the squash and your recovery (e.g., another PR landed on the same file), `git cherry-pick` may conflict. Resolve normally; the cherry-picked commits should still apply on top of the latest content.
 - `--delete-branch` on the original `gh pr merge` deletes the remote branch but not local. Your local copy of the closed branch retains the stranded commits, which is what you cherry-pick from.
+
+### Variant — NEW commit you make AFTER the squash (1.1.0)
+
+A close cousin: instead of "I pushed commits 2-N before the squash and they got stranded," you finish the original work, the squash-merge lands, then you write a *new* follow-up commit on top of your local-old-branch (e.g., a session-handoff doc that references the just-merged PR). You now want to land that one new commit on `<base>` (e.g., `starbucks-uk` or `main`).
+
+**Recovery is exactly the same as above** — branch off the current base + cherry-pick the new commit. But the *failure mode you should avoid* is different and worth calling out:
+
+**Do NOT use `git rebase --onto origin/<base> <pre-squash-branch> <followup-branch>`.** In a topology where `<pre-squash-branch>` has been squash-merged into `<base>`, this rebase has been observed to **silently drop the new commit** with a "Successfully rebased and updated refs" message — no error, no skip notification, working tree reset to `<base>`'s tip, your follow-up content gone. Recovery via reflog (`git reflog <branch>`) then `git reset --hard <reflog-hash>` is possible but only if you notice within the reflog retention window.
+
+This was reproduced 2026-05-19 (S63): commit `13f1ac7` added 2 new files (handoff + S64 prompt), neither path conflicted with anything on `starbucks-uk`, but `git rebase --onto origin/starbucks-uk feat/s63-oom-sentinel docs/s63-handoff` reset the branch to `origin/starbucks-uk`'s tip with no replayed commit. Root cause not fully diagnosed (the patch was demonstrably non-empty and non-duplicate), but the defensive recommendation stands: **branch fresh + cherry-pick, never rebase --onto across a squash-merged boundary**.
+
+```bash
+# WRONG (silently drops your new commit on certain squash topologies):
+git rebase --onto origin/<base> <pre-squash-branch> <followup-branch>
+
+# RIGHT (works every time):
+git checkout -b <followup-branch>-v2 origin/<base>
+git cherry-pick <followup-commit-sha>
+git push --force-with-lease origin <followup-branch>-v2:<followup-branch>
+```
 
 ## Sibling skills
 
