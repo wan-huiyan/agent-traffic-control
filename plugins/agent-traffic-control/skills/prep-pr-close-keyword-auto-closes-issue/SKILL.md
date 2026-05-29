@@ -19,10 +19,16 @@ description: |
   TIME — during prep, not during implementation). Includes a paste-ready
   diagnostic snippet, a reopen-comment template, an audit recipe for scanning
   closed issues for false-positives across a repo, and a prevention
-  convention (use bare `#N` references in non-implementation PRs).
+  convention (use bare `#N` references in non-implementation PRs). v1.2.0 adds
+  the NEGATED-KEYWORD variant: writing `Does not close #N` / `not resolving #N`
+  / `partial — closes #N later` in a commit or PR body STILL auto-closes #N
+  (GitHub's parser ignores the negation), and this fires for CODE PRs too (not
+  just docs/prep) — and squash-merge reads the COMMIT body, which can differ
+  from the PR description. Use when an issue closed despite a "does not close"
+  hedge, or a partial-implementation PR closed a multi-part issue.
 author: Claude Code
-version: 1.1.0
-date: 2026-05-11
+version: 1.2.0
+date: 2026-05-29
 ---
 
 # Prep PR close-keyword auto-closes issue prematurely
@@ -153,6 +159,19 @@ issues the PR doesn't actually resolve. Use bare `#N` references instead:
 
 The close-keyword should appear ONLY in the PR that contains the
 implementing diff. Save it for last.
+
+> **⚠️ Negation does NOT save you.** GitHub's keyword parser is a flat
+> substring scan — it is **not** negation- or context-aware. Writing
+> `Does not close #N`, `partial — does not resolve #N`, `not closing #N yet`,
+> or `closes #N later` in a commit/PR body **still closes #N** on
+> default-branch merge, because the parser sees the literal `close #N` and
+> ignores every surrounding word. If you must mention the issue in a hedged
+> way, use a NON-keyword verb: `Scopes only part of #N`, `Partial for #N`,
+> `Defers the rest of #N`. **Never put any close-keyword (`close/closes/closed/
+> fix/fixes/fixed/resolve/resolves/resolved`) adjacent to `#N` in prose you
+> don't intend to act on — even negated.** (This is also why the audit recipe's
+> "negated reference" row in §"Regex false-match patterns" is a false match for
+> *your audit* but a TRUE close for *GitHub* — the issue really did close.)
 
 ### Step 5 — Audit recipe (repo-wide scan)
 
@@ -321,6 +340,34 @@ suspect-bucketed) returned **0 false-positives**. Reframed risk profile:
    without the lint installed are not in active danger; the trap is
    genuinely rare in practice.
 
+## Empirical finding (v1.2.0 addendum, 2026-05-29 — negated-keyword authoring trap)
+
+A **code** PR (not a prep/docs PR) auto-closed an issue the author explicitly
+meant to leave open, via a **negated** close-keyword.
+
+- The PR implemented only a *partial* slice of a multi-part drift issue (#190).
+  The author deliberately did NOT use a close keyword in the title (`(#190 partial / #193)`)
+  and dropped a covered/deferred breakdown comment on the issue, intending it to
+  stay open.
+- But the squash-merge **commit body** contained the sentence **`Does not close #190.`**
+  On default-branch merge, GitHub parsed the literal `close #190`, ignored
+  `Does not`, and closed #190 as COMPLETED — orphaning the deferred items inside
+  a closed issue.
+- Detection: `gh issue view 190 --json closedAt,stateReason` + the timeline
+  (`gh api repos/<O>/<R>/issues/190/timeline`) showed the closing `commit_id`
+  was the author's own merge commit. Fix: `gh issue reopen 190` with a comment
+  explaining the auto-close and listing the still-open work.
+
+**Takeaways added to this skill:**
+1. The trap is **not limited to prep/docs PRs** — any PR (including code) whose
+   commit/PR body contains a close-keyword adjacent to `#N` will close `#N`.
+2. **Negation/hedging does not protect you** — see the ⚠️ callout in Step 4.
+   The "Negated reference" row in the false-match table was corrected: it is a
+   false match for *your audit* but a *real close* by GitHub.
+3. Squash-merge uses the **commit body**, which may differ from the PR
+   description — scan the actual merge-commit message, not just the PR UI body,
+   when both authoring and auditing.
+
 ### Regex false-match patterns to suppress
 
 The keyword regex
@@ -333,7 +380,7 @@ escalating to a real auto-close audit:
 | List-item count | `Fix #1 (literal-pin tests), …` | "#1" is a list count, not an issue ref. GitHub's parser does link it, but if `#1` is a merged PR (not an issue), no auto-close occurs. |
 | Past-tense narrative in body | `Closed #115 (stale memory hygiene)` | GitHub's `closedByPullRequestsReferences` empirically returns empty for past-tense `Closed` in body context (no `: #N` immediately after a keyword in the title). Manual closure was the real path. |
 | Quoted/code-fenced reference | `` `closes #123` `` inside a code-fence | GitHub does **not** parse keywords inside code fences. |
-| Negated reference | `does NOT close #N — out of scope` | GitHub does not parse the negation; check author intent before flagging. |
+| Negated reference | `does NOT close #N — out of scope` | **FALSE-MATCH FOR YOUR AUDIT, BUT A REAL AUTO-CLOSE BY GITHUB.** The author didn't *intend* to close (so it's noise when auditing intent), but GitHub's parser ignores the negation and **closes #N anyway**. So when *authoring*, treat this as dangerous (see v1.2.0 addendum); when *auditing others'*, flag it as a likely-unintended close that still fired. |
 
 ### Verification gate for the audit recipe
 
