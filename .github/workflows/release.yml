@@ -1,0 +1,38 @@
+name: Release on version bump
+
+# Cuts a GitHub Release whenever the VERSION file changes on main and no
+# matching release exists yet. Keeps releases from silently drifting behind
+# the shipped version. Bump VERSION in the same PR as the version bump.
+on:
+  push:
+    branches: [main]
+    paths: ['VERSION']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read VERSION
+        id: v
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          [ -n "$V" ] || { echo "::error::VERSION file is empty"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "Release v$V already exists — nothing to do."
+          else
+            echo "Cutting release v$V"
+            gh release create "v$V" --title "v$V" --generate-notes
+          fi
