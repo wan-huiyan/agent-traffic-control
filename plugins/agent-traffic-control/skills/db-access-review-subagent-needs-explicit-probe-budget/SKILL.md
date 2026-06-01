@@ -1,0 +1,94 @@
+---
+name: db-access-review-subagent-needs-explicit-probe-budget
+description: |
+  When dispatching a code-review / verification / research subagent that has LIVE database or cloud
+  access (BigQuery, gcloud, psql, Bash), give it an EXPLICIT tool-call + wall-time budget and tell it
+  which expensive probes NOT to re-run — otherwise it re-verifies everything from scratch, runs 20-40+
+  minutes, and can hit a transport "socket connection was closed unexpectedly" error that returns NO
+  final message (its entire investigation output is LOST and it is NOT resumable unless a continue/
+  SendMessage tool exists). Use when: (1) you're about to dispatch a `general-purpose` agent to review
+  a PR / verify findings with live-DB or gcloud access; (2) an Agent call returned `API Error: The
+  socket connection was closed unexpectedly` with `tool_uses: N` (>0) but `subagent_tokens: 0` / no
+  verdict — its work happened but the result was never delivered; (3) a review agent has been running
+  >20-30 min with no return; (4) you already validated the heavy probes yourself and just want a static
+  diff review + the fast test. Fix: bound the prompt ("≤8 tool calls, target <6 min, do NOT run BQ
+  probes — I already verified X/Y/Z; review the diff statically + run only the fast unit test") and
+  prefer several short bounded reviewers over one open-ended one. See also
+  subagent-watchdog-stall-on-ui-template-track (the UI-agent 600s-watchdog variant), schedule-poll-orchestrator-pattern.
+author: Claude Code
+version: 1.0.0
+date: 2026-05-29
+---
+
+# A review subagent with live-DB access needs an explicit probe budget
+
+## Problem
+
+You dispatch a `general-purpose` subagent to review a PR or verify findings, and it has live database /
+cloud / Bash access. Unprompted, it does the thorough thing: re-derives every claim from scratch,
+running expensive exploratory queries (full-window joins, multi-date sweeps, dry-runs). Two failure
+modes follow:
+
+1. **It runs very long** (20–40+ min of wall time on heavy probes), far past what the review needs.
+2. **It can socket-close mid-run.** The Agent tool returns `API Error: The socket connection was closed
+   unexpectedly` with a non-zero `tool_uses` count but **no final assistant message** — so the agent
+   did real work (11, 20 tool calls) but its **verdict was never delivered**. The output is lost, and
+   it is **not resumable** from the orchestrator unless a `SendMessage`/continue tool is available
+   (often it is not). You've burned the tokens and the wall-clock for nothing.
+
+The root cause is that an unbounded reviewer treats "review this change" as "independently re-establish
+the entire ground truth," which is exactly the slow, fragile thing — when the orchestrator has usually
+ALREADY established that ground truth and just needs a second pair of eyes on the diff.
+
+## Context / Trigger Conditions
+
+- About to dispatch a code-review / verification / research agent with BigQuery / gcloud / psql / Bash.
+- An `Agent` result shows `API Error: The socket connection was closed unexpectedly` plus
+  `tool_uses: N (>0)`, `subagent_tokens: 0`, and no Strengths/Issues/Assessment in the output.
+- A dispatched reviewer has no return after ~20–30 min.
+- You (orchestrator) already ran the expensive live probes and confirmed the numbers in the PR body.
+
+## Solution
+
+Bound review/verify subagents explicitly in the dispatch prompt:
+
+1. **Hard budget:** "Target under ~6 minutes, ≤8 tool calls." A reviewer with a budget self-limits to
+   the high-value checks.
+2. **Forbid the expensive re-derivation:** "Do NOT run BigQuery probes / multi-table joins over date
+   ranges. I already verified <the specific claims> — your job is the STATIC diff review + run only the
+   fast unit test (`pytest …`)." Hand it the ground truth as given facts to sanity-check cheaply, not
+   to reproduce.
+3. **Prefer several short bounded agents over one open-ended one** — diversity of lens at low per-agent
+   risk; if one socket-closes you still have the others.
+4. **On a socket-close:** capture the returned `agentId`. If a `SendMessage`/continue tool exists, try
+   resuming for just the verdict (no new probing). If not, **re-dispatch a fresh bounded agent** — do
+   not assume the lost agent "basically finished."
+
+## Verification
+
+The bounded re-dispatch returns a full verdict quickly (minutes, not tens of minutes) and does not
+socket-close. A pure-docs review can finish in <1 min / ~4 tool calls.
+
+## Example
+
+Two parallel review agents were dispatched with live-BQ access to verify an ML-pipeline PR and told to
+"adversarially verify my claims." Both ran **~34 minutes** (11 and 20 tool calls of BQ probing) and both
+returned `API Error: The socket connection was closed unexpectedly` with **zero verdict** — output lost,
+not resumable (`SendMessage` unavailable). Re-dispatched with "≤8 tool calls, <6 min, do NOT run BQ
+probes (I already validated the delta/unmapped-code/serving checks), review the diff statically + run
+the fast pytest" → both returned clean structured verdicts in ~12–13 min; a later docs-only review
+returned in 28s / 4 tool calls.
+
+## Notes
+
+- Distinct from [[subagent-watchdog-stall-on-ui-template-track]]: that is a UI/template agent killed by
+  the **600s no-output watchdog**, fixed by going inline. This is a **DB-access agent that socket-closes
+  after a long live-probe run**, fixed by **bounding the probe budget** (the work IS streaming output, so
+  the watchdog isn't the trigger — the transport drop is).
+- The asymmetry that makes bounding safe: the orchestrator has already done the expensive verification
+  (that's why it's confident enough to merge); the reviewer's value is the independent read of the DIFF
+  and a cheap sanity-check of the headline numbers, not a full re-derivation.
+- Pairs with the project norm "review every non-trivial PR before merge" — bounding makes that norm
+  cheap and reliable instead of a coin-flip on whether the agent returns.
+- See also: [[code-reviewer-subagent-no-bash-blocked-on-pr-diff]], [[finding-verification-live-bq-triple-probe]],
+  [[subagent-external-wait-orchestrator-takeover]].
