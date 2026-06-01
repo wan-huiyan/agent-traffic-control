@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 57 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 61 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 57 [Claude Code](https://claude.com/claude-code) skill
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 57 skills
+# Install the plugin — one shot, gets all 61 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -26,7 +26,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The five buckets
 
-The 57 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
+The 61 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -105,6 +105,8 @@ Subagents introduce their own coordination failure modes. These cover misattribu
 | [**task-framing-claims-need-subagent-grep-verify**](plugins/agent-traffic-control/skills/task-framing-claims-need-subagent-grep-verify/) | Grant and require a dispatched subagent to grep-verify the dispatcher's task-framing claims about the codebase before acting. |
 | [**pr-plan-bucket-triage-before-sizing**](plugins/agent-traffic-control/skills/pr-plan-bucket-triage-before-sizing/) | Run a subagent-per-bucket Phase-0 triage before writing detailed parallel-PR plans on an actively-shipped repo. |
 | [**wip-branch-linter-revert-system-reminder-trap**](plugins/agent-traffic-control/skills/wip-branch-linter-revert-system-reminder-trap/) | A linter/automation system-reminder silently reverts deliberate WIP-branch constants during parallel work — don't accept the revert. |
+| [**code-review-subagent-fabricates-specifics-to-inflate-severity**](plugins/agent-traffic-control/skills/code-review-subagent-fabricates-specifics-to-inflate-severity/) | A review subagent reports a HIGH/BLOCKING finding citing specific evidence (line numbers, call counts) that doesn't exist — verify the cited specifics before gating a merge; demote on fabrication. |
+| [**db-access-review-subagent-needs-explicit-probe-budget**](plugins/agent-traffic-control/skills/db-access-review-subagent-needs-explicit-probe-budget/) | A review/verification subagent with live DB/cloud access needs an explicit tool-call + wall-time budget and a return-partial-on-exhaustion instruction, or it runs 20–40min and can lose its whole output. |
 
 ### E. Squash/merge mechanics — *the gotchas at PR-land time*
 
@@ -121,6 +123,8 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 | [**squash-merge-content-preservation-vs-ancestor-check**](plugins/agent-traffic-control/skills/squash-merge-content-preservation-vs-ancestor-check/) | `git merge-base --is-ancestor` always fails after a squash even when content is preserved verbatim — verify by content, not ancestry. |
 | [**working-tree-edits-stranded-on-squash-merge**](plugins/agent-traffic-control/skills/working-tree-edits-stranded-on-squash-merge/) | Edit/Write don't stage; an unstaged fix is lost on squash-merge ("fix not on main") — stage before the squash lands. |
 | [**safe-bulk-worktree-branch-cleanup**](plugins/agent-traffic-control/skills/safe-bulk-worktree-branch-cleanup/) | Bulk-clean stale worktrees/branches gating deletion on PR state, not ancestry (`git branch --merged` lies after a squash). |
+| [**gh-pr-merge-squash-stdout-shows-sibling-files-as-created**](plugins/agent-traffic-control/skills/gh-pr-merge-squash-stdout-shows-sibling-files-as-created/) | `gh pr merge --squash` prints an alarming diffstat with `create mode` lines for sibling-PR files merged to main after your branch point — verify against the squash commit, don't panic-revert. |
+| [**solo-repo-branch-protection-stable-gate-and-self-merge**](plugins/agent-traffic-control/skills/solo-repo-branch-protection-stable-gate-and-self-merge/) | Configure branch protection on a solo-maintained repo so red changes can't reach main, without locking yourself out — stable aggregation gate vs matrix check names, require-PR, self-merge with zero reviewers. |
 
 > **Note:** `gh-squash-merge-closes-only-one-issue` also ships in [dashboard-audit-toolkit](https://github.com/wan-huiyan/dashboard-audit-toolkit) (where it surfaces as the operational gotcha when shipping audit fix-bundles at scale). Both wrap the same canonical skill.
 
@@ -131,6 +135,7 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 
 ## Version history
 
+- **v1.4.0** (2026-06-01) — Added 4 skills (2 to D. Subagent integrity: `code-review-subagent-fabricates-specifics-to-inflate-severity`, `db-access-review-subagent-needs-explicit-probe-budget`; 2 to E. Squash/merge mechanics: `gh-pr-merge-squash-stdout-shows-sibling-files-as-created`, `solo-repo-branch-protection-stable-gate-and-self-merge`) and expanded `multi-agent-skill-silent-phase-compression` with section 7 (forcing-function terminal-output row for droppable late steps in single-agent long skills). Total: 61 skills.
 - **v1.3.0** (2026-05-29) — Added 24 skills (1 to A, 8 to B, 5 to C, 7 to D, 3 to E) drawn from the parallel-session / worktree / subagent-orchestration lesson backlog, and refreshed 6 existing skills with expanded content (`gh-pr-merge-worktree-checkout-trap`, `stacked-pr-base-branch-deletion-auto-closes-dependent`, `stale-base-pr-silently-reverts-upstream-content`, `subagent-pre-existing-misattribution`, `synthetic-id-collision-rebase`, `pr-followup-commit-stranded-after-squash`). Total: 57 skills.
 - **v1.2.0** (2026-05-13) — Renamed repo `agent-squad-hr` → `agent-traffic-control`. Added 10 new skills (2 to A, 4 to B, 2 to C, 1 to D, 1 to E). Dropped `pr-conflict-site-regen` as too project-specific (the reusable kernel is already covered by `merge-conflict-generated-files`). Refreshed 3 existing skills with latest content. Total: 33 skills.
 - **v1.1.0** (2026-05-08) — Merged the original `agent-traffic-control` content (E. Squash/merge mechanics, 4 skills) into this single bundle. One-shot install reads better than two sister marketplaces.

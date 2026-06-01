@@ -211,6 +211,33 @@ Specific thoughts that signal compression about to happen:
 | "I'll skip Phase 5 round 2-3 since round 1 was thorough" | Acceptable per spec (Phase 5 is "max 3 rounds, can stop early on convergence"). But round 1 minimum is MANDATORY. |
 | "I'll compress to save tokens" | Subagent dispatch is parallel; each gets its own context. The compression is for the ORCHESTRATOR's context bloat, which file-based state passing eliminates entirely. |
 
+### 7. Forcing-function row in the skill's MANDATORY terminal output (esp. single-agent long skills)
+
+This failure mode is not exclusive to multi-agent fan-out. It also bites **single-agent,
+long-prose skills** (e.g. `session-handoff`): a late, *nested* step (e.g. `24c`) keeps getting
+dropped because (a) it sits after the "main event" (the PR merge), and (b) a later phase that
+produces visible user-facing output (a recap, a summary) reads as the **finale** — so the agent
+races to it and the intervening housekeeping steps silently evaporate. (Observed S18 2026-05-29:
+`session-handoff` step 24c "persist usage metrics" dropped across multiple sessions.)
+
+The cheap, durable fix: **make the droppable step a required, non-blankable row in the skill's
+mandatory terminal output table** (the summary the agent *always* emits). Most long skills end with
+a "present this table" step. If the step's artifact has no row there, the agent can present a
+complete-looking "done" without ever doing it — nothing forces it. Add a row that demands either the
+artifact (path / value) **or** an explicit `skipped: <reason>`, and a one-line note that the row is
+NOT blankable ("if you reach this table and the cell is empty, go back and run step N first").
+
+```diff
+  | `MEMORY.md` index | Updated |
++ | **Session usage record (step 24c)** | **REQUIRED — <path> written (cost $X, N subagents) or "skipped: <reason>"** |
+  | Git status | All committed and pushed |
+```
+
+Why it works: the terminal table is the one artifact the agent reliably produces, so wiring the
+fragile step *into* that artifact makes skipping it visibly incomplete rather than silently absent.
+Cheaper than a programmatic gate (#3) for prose skills that have no executable harness. Pairs with #5
+(manifest) — the manifest proves phases ran; this proves the *tail* step's output exists.
+
 ## Verification
 
 You have successfully fixed the compression failure mode if:
