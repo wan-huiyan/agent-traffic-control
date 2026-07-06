@@ -84,6 +84,7 @@ When two sessions DO collide (or an old PR drifts behind a fast-moving main), th
 | [**git-diff-2dot-vs-3dot-merge-safety**](plugins/agent-traffic-control/skills/git-diff-2dot-vs-3dot-merge-safety/) | A 2-dot diff false-alarms "this PR deletes files on main" for a PR branched off an older commit — use 3-dot to check merge safety. |
 | [**docs-branch-off-feature-branch-smuggles-code**](plugins/agent-traffic-control/skills/docs-branch-off-feature-branch-smuggles-code/) | A `docs(...)` PR branched off a feature branch (not main) silently ships the parent branch's code. |
 | [**stacked-pr-review-per-base-diff-and-attach**](plugins/agent-traffic-control/skills/stacked-pr-review-per-base-diff-and-attach/) | Review a stack by diffing each PR against its own base (not all-vs-main) and attach reviews to the stack's base branch. |
+| [**gh-pr-pickup-designated-branch-supersede**](plugins/agent-traffic-control/skills/gh-pr-pickup-designated-branch-supersede/) | Finish someone else's open WIP PR from a session locked to a different branch: base the designated branch on the PR head, supersede, close the draft — and dodge the upstream-hijack push trap. |
 
 ### D. Subagent integrity — *orchestrator-aware*
 
