@@ -143,8 +143,8 @@ history rewrite.
 Use explicit paths:
 
 ```sh
-git add <analytics_pkg>/cloudrun/cr_client_dashboard/ai_insights.py \
-        <analytics_pkg>/cloudrun/cr_client_dashboard/tests/test_ai_insights_v2.py
+git add <analytics_pkg>/cloudrun/<dashboard_app>/ai_insights.py \
+        <analytics_pkg>/cloudrun/<dashboard_app>/tests/test_ai_insights_v2.py
 git commit --amend -m "..."
 ```
 

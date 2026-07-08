@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 82 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 94 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,15 +18,15 @@ A coordination toolkit of 82 [Claude Code](https://claude.com/claude-code) skill
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 82 skills
+# Install the plugin — one shot, gets all 94 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
 This is a single multi-skill plugin (modeled on `superpowers`), not a marketplace of individual plugins. One install gets you the full `before / during / after / orchestrator-aware / merge-mechanics` arc; you can't pick-and-choose per-skill via `/plugin install`. If you only want one or two of these skills, copy them directly into `~/.claude/skills/<skill-name>/` instead.
 
-## The five buckets
+## The six buckets
 
-The 82 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
+The 94 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -149,12 +149,33 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 
 > **Note:** `gh-squash-merge-closes-only-one-issue` also ships in [dashboard-audit-toolkit](https://github.com/wan-huiyan/dashboard-audit-toolkit) (where it surfaces as the operational gotcha when shipping audit fix-bundles at scale). Both wrap the same canonical skill.
 
+### F. Workflow-tool & multi-agent orchestration mechanics — *building the fan-out itself*
+
+Failure modes of the `Workflow` tool and multi-agent orchestration — schema/StructuredOutput agents, fan-out/pipeline plumbing, rate-limit waves, and the deploy-gate around it. (Useful when you drive parallel work through the `Workflow` tool rather than separate sessions.)
+
+| Skill | Role |
+|---|---|
+| [**workflow-schema-agent-retry-cap-oversized-payload**](plugins/agent-traffic-control/skills/workflow-schema-agent-retry-cap-oversized-payload/) | A Workflow schema agent hits the retry cap on an oversized output — recover its work from the transcript instead of losing the whole run. |
+| [**workflow-schema-agents-empty-loop-under-ratelimit**](plugins/agent-traffic-control/skills/workflow-schema-agents-empty-loop-under-ratelimit/) | Schema agents empty-loop StructuredOutput under a rate-limit storm — detect and back off instead of burning the fan-out. |
+| [**workflow-standalone-schema-agent-crash-and-args-string**](plugins/agent-traffic-control/skills/workflow-standalone-schema-agent-crash-and-args-string/) | A standalone schema agent can crash the whole run; and `args` arrives as a JSON string — parse-guard it. |
+| [**workflow-pipeline-parallel-stage-returns-bare-array-dropped-by-collector**](plugins/agent-traffic-control/skills/workflow-pipeline-parallel-stage-returns-bare-array-dropped-by-collector/) | A `pipeline()` stage that returns `parallel()` yields a bare array the collector silently drops — flatten inside the stage. |
+| [**cjk-structured-llm-output-truncates-json-needs-2x-tokens**](plugins/agent-traffic-control/skills/cjk-structured-llm-output-truncates-json-needs-2x-tokens/) | Long CJK structured output truncates JSON at the token cap — budget ~2× tokens and salvage the partial. |
+| [**pre-dispatch-schema-probe**](plugins/agent-traffic-control/skills/pre-dispatch-schema-probe/) | Probe a StructuredOutput schema with one cheap agent before fanning it out to many — catch schema mismatches early. |
+| [**workflow-parallel-fanout-omits-sequential-phases**](plugins/agent-traffic-control/skills/workflow-parallel-fanout-omits-sequential-phases/) | Running a sequential multi-agent process as a parallel Workflow silently drops its sequential phases — model the dependency. |
+| [**workflow-deterministic-compute-as-script-not-stall-prone-agent**](plugins/agent-traffic-control/skills/workflow-deterministic-compute-as-script-not-stall-prone-agent/) | Move deterministic compute to a direct script; don't lose it to a stalling agent turn. |
+| [**workflow-run-deploy-gate-fork-pr-ref-name-escalation**](plugins/agent-traffic-control/skills/workflow-run-deploy-gate-fork-pr-ref-name-escalation/) | A `workflow_run` deploy gate that trusts the ref *name* is a fork-PR privilege-escalation hole — gate on the event, not the name. |
+| [**opus-ratelimit-fanout-retry-on-sonnet-throttled-waves**](plugins/agent-traffic-control/skills/opus-ratelimit-fanout-retry-on-sonnet-throttled-waves/) | Opus rate-limit on a fan-out → retry on Sonnet, throttled into waves rather than one big burst. |
+| [**design-subagent-with-plan-schema-executes-and-deploys-live-infra**](plugins/agent-traffic-control/skills/design-subagent-with-plan-schema-executes-and-deploys-live-infra/) | A "design/judge" subagent handed a plan schema can execute it and deploy live infrastructure — constrain it to proposing. |
+| [**workflow-large-markdown-deliverable-extract-from-output-json-not-retype**](plugins/agent-traffic-control/skills/workflow-large-markdown-deliverable-extract-from-output-json-not-retype/) | Persist a Workflow's large markdown field by parsing its output JSON — never have an agent retype it. |
+
 ## When NOT to reach for this toolkit
 
 - **Single-session work** with no parallel-agent risk. The protocols are overhead with no benefit.
 - **Cross-team coordination across separate repos** (real merge-queue territory) — out of scope.
 
 ## Version history
+
+- **v1.8.0** (2026-07-08) — Added a sixth bucket, **F. Workflow-tool & multi-agent orchestration mechanics** (12 skills): schema/StructuredOutput agent traps (`workflow-schema-agent-retry-cap-oversized-payload`, `workflow-schema-agents-empty-loop-under-ratelimit`, `workflow-standalone-schema-agent-crash-and-args-string`, `cjk-structured-llm-output-truncates-json-needs-2x-tokens`, `pre-dispatch-schema-probe`), fan-out/pipeline plumbing (`workflow-pipeline-parallel-stage-returns-bare-array-dropped-by-collector`, `workflow-parallel-fanout-omits-sequential-phases`, `workflow-deterministic-compute-as-script-not-stall-prone-agent`, `workflow-large-markdown-deliverable-extract-from-output-json-not-retype`), and orchestration/deploy edges (`opus-ratelimit-fanout-retry-on-sonnet-throttled-waves`, `workflow-run-deploy-gate-fork-pr-ref-name-escalation`, `design-subagent-with-plan-schema-executes-and-deploys-live-infra`). Also sanitized pre-existing engagement-specific identifiers in 6 earlier skills (neutral placeholders). Total: 94 skills.
 
 - **v1.7.0** (2026-07-08) — Added 20 skills harvested from parallel-session / multi-worktree work: 5 to **A** (live parallel-session coordination), 8 to **B** (worktree isolation), 2 to **C** (parallel-PR), 4 to **D** (subagent integrity), 1 to **E** (squash/merge). Every worked example anonymized to neutral placeholders. Each new skill keeps its authored invocation mode, so the bundle now sits at 63 manual-only (`disable-model-invocation: true`) and 19 auto-invocable — the same mixed policy the bundle already carried; a uniform pass can normalize it later if wanted. Total: 82 skills.
 

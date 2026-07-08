@@ -154,12 +154,12 @@ Same root cause (main-shell cwd persisted into a subdir after an earlier `cd`), 
 
 ```bash
 # earlier in the session, cwd drifted into a subdir:
-cd /repo/<analytics_pkg>/cloudrun/cr_client_dashboard && python -m pytest ...   # persists cwd
+cd /repo/<analytics_pkg>/cloudrun/<dashboard_app> && python -m pytest ...   # persists cwd
 
 # later, trying to inspect a commit that DID touch bq_queries.py:
 git show --stat HEAD | grep bq_queries          # → "bq_queries.py | 62 ++++--"  (file IS in the commit)
-git diff HEAD~1 HEAD -- <analytics_pkg>/cloudrun/cr_client_dashboard/bq_queries.py
-# → EMPTY  ❌  (pathspec resolved from cwd = .../cr_client_dashboard/<analytics_pkg>/... which doesn't exist)
+git diff HEAD~1 HEAD -- <analytics_pkg>/cloudrun/<dashboard_app>/bq_queries.py
+# → EMPTY  ❌  (pathspec resolved from cwd = .../<dashboard_app>/<analytics_pkg>/... which doesn't exist)
 git show HEAD:<analytics_pkg>/.../bq_queries.py | grep <symbol>   # → matches (object-name form is cwd-INDEPENDENT)
 ```
 
