@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 61 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 82 [Claude Code](https://claude.com/claude-code) skills for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops** — issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 61 [Claude Code](https://claude.com/claude-code) skill
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 62 skills
+# Install the plugin — one shot, gets all 82 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -26,7 +26,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The five buckets
 
-The 62 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
+The 82 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -37,6 +37,11 @@ Before any code is written, claim the issue so sibling sessions detect it and sk
 | [**gh-issue-claim-coordination**](plugins/agent-traffic-control/skills/gh-issue-claim-coordination/) | 60-second protocol: preflight (`gh issue view --json assignees,labels,updatedAt`) + atomic claim (`--add-assignee @me --add-label wip`) + 24h stale-claim sweep + label-drop on PR merge. Self-heals: idempotent `gh label create` runs every pickup. |
 | [**session-handoff-number-collision-with-unmerged-sibling**](plugins/agent-traffic-control/skills/session-handoff-number-collision-with-unmerged-sibling/) | Two sibling sessions both pick the same next handoff number from `docs/handoffs/` because each only sees what's merged on its branch — detect and renumber before push. |
 | [**session-handoff-detect-prior-orphan-pr**](plugins/agent-traffic-control/skills/session-handoff-detect-prior-orphan-pr/) | Pre-flight detect a prior incomplete handoff run's branch/PR/worktree before starting, so you don't open a duplicate PR for work already in flight. |
+| [**parallel-session-coedit-via-source-mtime-and-idempotent-rebuild**](plugins/agent-traffic-control/skills/parallel-session-coedit-via-source-mtime-and-idempotent-rebuild/) | Safely co-edit a deliverable while another live session is actively editing the same file — coordinate via source mtime + an idempotent rebuild instead of clobbering. |
+| [**parallel-session-superseded-validated-fix-verify-live-prod-state-first**](plugins/agent-traffic-control/skills/parallel-session-superseded-validated-fix-verify-live-prod-state-first/) | A parallel session already shipped a (often better) fix for the same live-prod artifact while you built yours — verify current prod state before redoing or overwriting. |
+| [**shared-file-redesign-parallel-author-serial-integrate**](plugins/agent-traffic-control/skills/shared-file-redesign-parallel-author-serial-integrate/) | Parallelize a multi-slice redesign whose slices ALL edit one hot file (template, central view, shared CSS) — structure the handoff so authors work in parallel but integrate serially. |
+| [**shared-mutable-index-rmw-race-use-marker-blob-per-item**](plugins/agent-traffic-control/skills/shared-mutable-index-rmw-race-use-marker-blob-per-item/) | Designing a shared "who's active / recent items" index with concurrent producers — dodge the read-modify-write race with a marker-blob-per-item pattern. |
+| [**recover-killed-session-from-transcript-and-worktree**](plugins/agent-traffic-control/skills/recover-killed-session-from-transcript-and-worktree/) | Recover a prior session's work, plan, and failure-cause from its transcript + worktree after it crashed or was killed mid-task. |
 
 See also: `superpowers:dispatching-parallel-agents` — when to fan out vs. not (not bundled here; ships with the official `superpowers` plugin).
 
@@ -65,6 +70,14 @@ The cheap-isolation primitive (`git worktree`) has surprising failure modes when
 | [**git-stash-pop-pulls-unrelated-stash**](plugins/agent-traffic-control/skills/git-stash-pop-pulls-unrelated-stash/) | The stash stack is global across branches and worktrees; a reflexive `stash pop` can pull a sibling worktree's stash. |
 | [**claude-code-projects-jsonl-worktree-fanout**](plugins/agent-traffic-control/skills/claude-code-projects-jsonl-worktree-fanout/) | Session JSONLs fan out into worktree-namespaced project dirs — grepping only the canonical dir misses worktree-run sessions. |
 | [**deploy-from-stale-worktree-silent-rollback**](plugins/agent-traffic-control/skills/deploy-from-stale-worktree-silent-rollback/) | Deploying from a worktree whose HEAD predates merged PRs silently rolls back prod — build context is the filesystem, not the git ref. |
+| [**async-doc-hook-autodocs-worktree-locks-branch-checkout**](plugins/agent-traffic-control/skills/async-doc-hook-autodocs-worktree-locks-branch-checkout/) | `git checkout <branch>` fails "already used by worktree" because an async autodocs hook is holding a worktree on that branch — find and release it. |
+| [**git-auto-maintenance-recurring-worktree-index-lock**](plugins/agent-traffic-control/skills/git-auto-maintenance-recurring-worktree-index-lock/) | A recurring `index.lock: File exists` that returns after you `rm` it, because your own commands keep spawning `git maintenance run` in a busy multi-worktree repo. |
+| [**harness-read-write-base-repo-path-in-worktree-stale-tree**](plugins/agent-traffic-control/skills/harness-read-write-base-repo-path-in-worktree-stale-tree/) | In a worktree session, Read/Write/Edit calls using a BASE-repo absolute path (missing the `.claude/worktrees/<name>/` segment) silently operate on the wrong tree. |
+| [**worktree-write-abs-path-lands-in-parent-checkout**](plugins/agent-traffic-control/skills/worktree-write-abs-path-lands-in-parent-checkout/) | A Write/Edit whose absolute path points at the main-repo root silently creates the file in the parent checkout's working tree — on whatever branch it has out. |
+| [**worktree-stale-local-main-ref-inflates-pr-diff**](plugins/agent-traffic-control/skills/worktree-stale-local-main-ref-inflates-pr-diff/) | `git diff main...<branch>` reports far more files than you changed because local `main` is stale — a false "my PR reverts dozens of files" alarm; fetch first. |
+| [**shell-pinned-to-deleted-worktree-cwd-blocks-git**](plugins/agent-traffic-control/skills/shell-pinned-to-deleted-worktree-cwd-blocks-git/) | Every shell command fails `Unable to read current working directory` after the worktree you were in gets pruned — diagnose and recover the cwd. |
+| [**pytest-editable-install-resolves-to-primary-checkout-not-worktree**](plugins/agent-traffic-control/skills/pytest-editable-install-resolves-to-primary-checkout-not-worktree/) | Running pytest from a worktree with an editable install (`pip install -e .`) made from the primary checkout imports the PRIMARY source, not your worktree's. |
+| [**prove-test-failures-pre-existing-via-clean-worktree**](plugins/agent-traffic-control/skills/prove-test-failures-pre-existing-via-clean-worktree/) | Before panic-debugging (or waving off) test failures in files your diff never touched, prove they're pre-existing by replaying against a clean worktree. |
 
 ### C. Parallel-PR conflict recovery — *after collision*
 
@@ -85,6 +98,8 @@ When two sessions DO collide (or an old PR drifts behind a fast-moving main), th
 | [**docs-branch-off-feature-branch-smuggles-code**](plugins/agent-traffic-control/skills/docs-branch-off-feature-branch-smuggles-code/) | A `docs(...)` PR branched off a feature branch (not main) silently ships the parent branch's code. |
 | [**stacked-pr-review-per-base-diff-and-attach**](plugins/agent-traffic-control/skills/stacked-pr-review-per-base-diff-and-attach/) | Review a stack by diffing each PR against its own base (not all-vs-main) and attach reviews to the stack's base branch. |
 | [**gh-pr-pickup-designated-branch-supersede**](plugins/agent-traffic-control/skills/gh-pr-pickup-designated-branch-supersede/) | Finish someone else's open WIP PR from a session locked to a different branch: base the designated branch on the PR head, supersede, close the draft — and dodge the upstream-hijack push trap. |
+| [**large-redesign-parallel-branch-collision-audit**](plugins/agent-traffic-control/skills/large-redesign-parallel-branch-collision-audit/) | Before a large redesign (10+ PRs rewriting shared files), audit ALL unmerged branches for commits touching the same files, so parallel work doesn't silently collide. |
+| [**pr-from-stale-branch-silently-reverts-newer-main-files**](plugins/agent-traffic-control/skills/pr-from-stale-branch-silently-reverts-newer-main-files/) | Opening/merging a PR from a long-lived branch can silently DELETE files that landed on main after your branch point — with no conflict. Whole-file sibling of `stale-base-pr-silently-reverts-upstream-content` (that one = line-level overlap). |
 
 ### D. Subagent integrity — *orchestrator-aware*
 
@@ -108,6 +123,10 @@ Subagents introduce their own coordination failure modes. These cover misattribu
 | [**wip-branch-linter-revert-system-reminder-trap**](plugins/agent-traffic-control/skills/wip-branch-linter-revert-system-reminder-trap/) | A linter/automation system-reminder silently reverts deliberate WIP-branch constants during parallel work — don't accept the revert. |
 | [**code-review-subagent-fabricates-specifics-to-inflate-severity**](plugins/agent-traffic-control/skills/code-review-subagent-fabricates-specifics-to-inflate-severity/) | A review subagent reports a HIGH/BLOCKING finding citing specific evidence (line numbers, call counts) that doesn't exist — verify the cited specifics before gating a merge; demote on fabrication. |
 | [**db-access-review-subagent-needs-explicit-probe-budget**](plugins/agent-traffic-control/skills/db-access-review-subagent-needs-explicit-probe-budget/) | A review/verification subagent with live DB/cloud access needs an explicit tool-call + wall-time budget and a return-partial-on-exhaustion instruction, or it runs 20–40min and can lose its whole output. |
+| [**dispatched-bash-agent-git-checkout-clobbers-uncommitted-edit**](plugins/agent-traffic-control/skills/dispatched-bash-agent-git-checkout-clobbers-uncommitted-edit/) | A verification/review subagent you dispatched runs `git checkout/restore/stash` and wipes your uncommitted edits — forbid or sandbox destructive git in dispatched agents. |
+| [**subagent-read-stale-worktree-needs-head-pin**](plugins/agent-traffic-control/skills/subagent-read-stale-worktree-needs-head-pin/) | Read-only audit subagents silently return line numbers / "what exists" claims from the WRONG worktree in a many-worktree repo — pin them to the intended HEAD. |
+| [**parallel-impl-agent-dies-mid-stream-verify-working-tree**](plugins/agent-traffic-control/skills/parallel-impl-agent-dies-mid-stream-verify-working-tree/) | A dispatched parallel impl subagent can die leaving ZERO output while the harness still reports "completed" — verify the working tree, don't trust the status. |
+| [**parallel-subagent-fanout-rate-limit-recover-from-disk**](plugins/agent-traffic-control/skills/parallel-subagent-fanout-rate-limit-recover-from-disk/) | Large parallel subagent fan-outs hit a server-side rate limit AND the return status lies about what got written — recover the produced files from disk. |
 
 ### E. Squash/merge mechanics — *the gotchas at PR-land time*
 
@@ -126,6 +145,7 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 | [**safe-bulk-worktree-branch-cleanup**](plugins/agent-traffic-control/skills/safe-bulk-worktree-branch-cleanup/) | Bulk-clean stale worktrees/branches gating deletion on PR state, not ancestry (`git branch --merged` lies after a squash). |
 | [**gh-pr-merge-squash-stdout-shows-sibling-files-as-created**](plugins/agent-traffic-control/skills/gh-pr-merge-squash-stdout-shows-sibling-files-as-created/) | `gh pr merge --squash` prints an alarming diffstat with `create mode` lines for sibling-PR files merged to main after your branch point — verify against the squash commit, don't panic-revert. |
 | [**solo-repo-branch-protection-stable-gate-and-self-merge**](plugins/agent-traffic-control/skills/solo-repo-branch-protection-stable-gate-and-self-merge/) | Configure branch protection on a solo-maintained repo so red changes can't reach main, without locking yourself out — stable aggregation gate vs matrix check names, require-PR, self-merge with zero reviewers. |
+| [**async-post-commit-hook-commit-orphaned-by-squash-merge**](plugins/agent-traffic-control/skills/async-post-commit-hook-commit-orphaned-by-squash-merge/) | In a repo with an async post-commit hook that makes its own follow-up commit, the hook's commit can be orphaned (never reach main) when the PR squash-merges. |
 
 > **Note:** `gh-squash-merge-closes-only-one-issue` also ships in [dashboard-audit-toolkit](https://github.com/wan-huiyan/dashboard-audit-toolkit) (where it surfaces as the operational gotcha when shipping audit fix-bundles at scale). Both wrap the same canonical skill.
 
@@ -135,6 +155,8 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 - **Cross-team coordination across separate repos** (real merge-queue territory) — out of scope.
 
 ## Version history
+
+- **v1.7.0** (2026-07-08) — Added 20 skills harvested from parallel-session / multi-worktree work: 5 to **A** (live parallel-session coordination), 8 to **B** (worktree isolation), 2 to **C** (parallel-PR), 4 to **D** (subagent integrity), 1 to **E** (squash/merge). Every worked example anonymized to neutral placeholders. Each new skill keeps its authored invocation mode, so the bundle now sits at 63 manual-only (`disable-model-invocation: true`) and 19 auto-invocable — the same mixed policy the bundle already carried; a uniform pass can normalize it later if wanted. Total: 82 skills.
 
 - **v1.6.0** (2026-07-08) — Refreshed 53 skills with their latest content (expanded worked examples, recovery steps, and sister-skill cross-references) and generalized every worked example to neutral placeholders (`the-project-repo`, `<analytics_pkg>`, `<user>`, `<org>`) so the toolkit carries methodology without engagement-specific details. Also fixed a version-drift bug where `marketplace.json` lagged the plugin at 1.4.0. Total: 62 skills.
 - **v1.5.0** (2026-07-06) — Added `gh-pr-pickup-designated-branch-supersede` (E. Squash/merge mechanics): picking up a designated branch that supersedes an earlier PR. Total: 62 skills.
