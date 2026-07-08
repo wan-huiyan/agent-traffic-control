@@ -63,7 +63,7 @@ list to only those that exist in the worktree at that SHA**:
 ```bash
 # Inside the worktree at the target SHA:
 TEST_DIRS=()
-for d in scripts/overnight/tests <analytics_pkg>/tests <analytics_pkg>/cloudrun/cr_client_dashboard/tests; do
+for d in scripts/overnight/tests <analytics_pkg>/tests <analytics_pkg>/cloudrun/<dashboard_app>/tests; do
   [ -d "$d" ] && TEST_DIRS+=("$d")
 done
 

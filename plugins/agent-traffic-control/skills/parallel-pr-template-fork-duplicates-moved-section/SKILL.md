@@ -220,7 +220,7 @@ neither asserted cross-route uniqueness.
 
 Diagnostic:
 ```sh
-grep -rln 'cohort-radar-chart' <analytics_pkg>/cloudrun/cr_client_dashboard/templates/
+grep -rln 'cohort-radar-chart' <analytics_pkg>/cloudrun/<dashboard_app>/templates/
 # → drivers.html       (incident)
 # → library_explorer.html
 ```

@@ -18,7 +18,7 @@ description: |
   but prod didn't update", "the auto-deploy workflow shows skipped", "do I
   need to deploy manually after merge?". ALSO covers the INVERSE trap (v1.2.0):
   an `actions/labeler` auto-applied `auto-deploy` to a config/docs-only PR (e.g.
-  `cr_client_dashboard/monitoring/*.yaml`, README, ADR) that lives under the
+  `<dashboard_app>/monitoring/*.yaml`, README, ADR) that lives under the
   deployable path glob but never affects the built image — so merging fires an
   UNWANTED redeploy. Trigger: "why does my monitoring/docs PR have the auto-deploy
   label", "remove auto-deploy before merge", "config PR triggered a redeploy".
@@ -66,7 +66,7 @@ All of these are typically true:
     pull_request:
       types: [closed]
       paths:
-        - '<analytics_pkg>/cloudrun/cr_client_dashboard/**'
+        - '<analytics_pkg>/cloudrun/<dashboard_app>/**'
   ```
 
 - The user reports "I merged + CI green but I can't see the changes live" minutes-to-hours after merge (long enough that they've already eliminated obvious caching).
@@ -267,7 +267,7 @@ Two files needed:
 ```yaml
 auto-deploy:
   - changed-files:
-    - any-glob-to-any-file: ['<analytics_pkg>/cloudrun/cr_client_dashboard/**']
+    - any-glob-to-any-file: ['<analytics_pkg>/cloudrun/<dashboard_app>/**']
 ```
 
 **`.github/workflows/auto_label.yml`**:
@@ -299,7 +299,7 @@ Key points:
 
 ### Inverse trap — the auto-labeler OVER-labels a config/docs-only PR under the deployable path (verified 2026-07-01)
 
-Prevention 4 introduces the opposite failure mode. The labeler globs the *whole* deployable tree (`cr_client_dashboard/**`), but that tree contains files that **do not affect the built image** — e.g. `cr_client_dashboard/monitoring/*.yaml` (Cloud Monitoring IaC applied out-of-band via `gcloud`), READMEs, ADRs. A PR that only touches those still gets `auto-deploy` auto-applied, and because the deploy workflow's path filter *also* matches `cr_client_dashboard/**` (the `!`-exclusions only cover baker files), **merging fires a full dashboard redeploy for a change the image never sees** — redeploying whatever else is on `main`, an unintended out-of-band ship.
+Prevention 4 introduces the opposite failure mode. The labeler globs the *whole* deployable tree (`<dashboard_app>/**`), but that tree contains files that **do not affect the built image** — e.g. `<dashboard_app>/monitoring/*.yaml` (Cloud Monitoring IaC applied out-of-band via `gcloud`), READMEs, ADRs. A PR that only touches those still gets `auto-deploy` auto-applied, and because the deploy workflow's path filter *also* matches `<dashboard_app>/**` (the `!`-exclusions only cover baker files), **merging fires a full dashboard redeploy for a change the image never sees** — redeploying whatever else is on `main`, an unintended out-of-band ship.
 
 Symptom: you open a monitoring/config/docs PR, and `gh pr view <N> --json labels` shows `auto-deploy` you didn't add.
 
@@ -311,7 +311,7 @@ The labeler runs on `opened`/`synchronize`, so it won't re-add after you remove 
 ```sh
 gh run list --workflow=<deploy-workflow>.yml --limit 2 --json conclusion,displayTitle   # expect "skipped" for your PR
 ```
-Durable fix (if config-only PRs under the deployable path are common): tighten the deploy workflow's path filter to `!`-exclude `cr_client_dashboard/monitoring/**` (and other non-image dirs), the same way baker-only files are already excluded — so even a labeled config PR gates out.
+Durable fix (if config-only PRs under the deployable path are common): tighten the deploy workflow's path filter to `!`-exclude `<dashboard_app>/monitoring/**` (and other non-image dirs), the same way baker-only files are already excluded — so even a labeled config PR gates out.
 
 ## Notes
 

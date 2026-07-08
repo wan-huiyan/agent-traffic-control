@@ -136,9 +136,9 @@ Bad sub-agent prompt (no correction permission):
 
 ```
 Write docs/analysis/foo.md covering 8 v7 retrain implications:
-1. FAFSA / has_isir_receipt — NOT in v6.1, candidate add
-2. Student_Type__c — NOT in v6.1 feature set, candidate add
-3. Alien_Status__c — needs derivation, candidate add
+1. aid-eligibility / has_aid_doc — NOT in v6.1, candidate add
+2. segment_type — NOT in v6.1 feature set, candidate add
+3. residency_status — needs derivation, candidate add
 ... etc
 ```
 
@@ -156,19 +156,19 @@ or [Contradicts task framing] or [NEEDS-VERIFICATION] with file:line
 evidence. If you find me wrong, proceed with the corrected version and
 explain the discrepancy in 1-2 sentences.
 
-1. FAFSA / has_isir_receipt — NOT in v6.1, candidate add
-2. Student_Type__c — NOT in v6.1 feature set, candidate add
+1. aid-eligibility / has_aid_doc — NOT in v6.1, candidate add
+2. segment_type — NOT in v6.1 feature set, candidate add
 ... etc
 ```
 
 S217 outcome: sub-agent grep-verified all 8 findings. Two came back
 `[Contradicts task framing]`:
 
-> Finding 2 (Student_Type__c): "NOT in v6.1" was wrong — `app_student_type`
+> Finding 2 (segment_type): "NOT in v6.1" was wrong — `app_student_type`
 > IS already a feature in v6.1 at lines 226/769/1039. The v7 implication
 > is vocabulary pinning post-2026-04-17 model promotion, NOT adding.
 
-> Finding 5 (Alien_Status__c): "needs derivation" implied absence — it
+> Finding 5 (residency_status): "needs derivation" implied absence — it
 > IS already pulled at line 585 into `enrollment_salesforce_features`
 > and surfaced at line 1267. The v7 question is grain semantics + lead-
 > stage proxy quality, not whether to add.
