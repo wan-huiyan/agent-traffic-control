@@ -1,0 +1,12 @@
+# Copy this file to `.leakterms` (gitignored) and add your real client / brand /
+# project / dataset / username identifiers — ONE `grep -E` regex per line. Lines
+# starting with # are ignored. The committed generic patterns (Salesforce __c
+# fields, API keys, emails) plus this local list together catch the enumerable
+# leaks. NEVER commit the real `.leakterms`.
+#
+# Illustrative examples only (replace with your own — these are NOT real):
+# acme-corp
+# my-client-brand
+# my-project-[0-9]+
+# some_internal_dataset
+# /Users/<your-username>/
