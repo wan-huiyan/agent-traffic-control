@@ -21,6 +21,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-11
+disable-model-invocation: true
 ---
 
 # GHA `pull_request` Event Uses Merge-Ref, Not Head-Ref

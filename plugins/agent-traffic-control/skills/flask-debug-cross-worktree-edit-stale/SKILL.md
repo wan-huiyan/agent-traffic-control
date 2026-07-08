@@ -23,6 +23,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-08
+disable-model-invocation: true
 ---
 
 # Flask debug edits cross-worktree stale
@@ -175,7 +176,7 @@ Real session 2026-05-08 (this is where the skill was extracted):
   :8006 from there.
 - Sister worktree (`.claude/worktrees/monitor-prettify`) was where
   edits were being made.
-- After 5 polish edits to `templates/roadmap.html`, curl
+- After 5 polish edits to `templates/library_roadmap.html`, curl
   returned byte-identical 27,028 bytes every time.
 - Confused for ~3 minutes by hypotheses around Jinja cache, Flask
   TTL, etc.

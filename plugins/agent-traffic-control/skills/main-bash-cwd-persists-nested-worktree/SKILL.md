@@ -14,10 +14,20 @@ description: |
   resolves against that persisted cwd rather than the project root, silently creating
   nested layouts. This is the **inverse** of the subagent variant
   (subagent-bash-cd-wrong-worktree) — subagent shells reset per call, main shell
-  doesn't.
+  doesn't. **Also covers the sibling case (v1.1): from the project ROOT, a
+  `git worktree add ../<name> ...` escapes UP to the repo's PARENT dir (e.g.
+  `/Users/x/Documents/<name>`), OUTSIDE the `.claude/worktrees/` convention — and a
+  later Read/Edit/Write using the assumed `.claude/worktrees/<name>` absolute path
+  fails with a MISLEADING "file does not exist" (the file exists, the worktree is
+  just elsewhere).** **Also covers (v1.2): a drifted cwd makes `git diff A B -- <repo-relative-path>`
+  return EMPTY while `git diff A B --stat` (no pathspec) shows the same file as
+  changed — because pathspecs resolve relative to cwd but `--stat` reports against
+  the repo root. Tell: a pathspec-filtered git command comes back empty yet `--stat`
+  / `git show <rev>:<path>` disagree → suspect cwd drift, not the commit/branch/range.**
 author: Claude Code
-version: 1.0.0
-date: 2026-05-26
+version: 1.2.0
+date: 2026-07-02
+disable-model-invocation: true
 ---
 
 # Main-agent Bash cwd persistence → nested worktrees at wrong path
@@ -113,9 +123,57 @@ git worktree add .claude/worktrees/s15-csv-upload origin/main -b feat/s15-csv-up
 
 **Fix applied in that session:** none mid-session (PRs all pushed correctly via branch refs). The lesson is to use absolute paths next time.
 
+## Variant (v1.1): `../<name>` escapes UP to the repo parent, then a file-tool call "file does not exist"
+
+A second, even-easier-to-hit shape — cwd was correct (the project root), the relative path itself was wrong:
+
+```bash
+cd /Users/x/Documents/myrepo                       # at project root — cwd is fine
+git worktree add -b docs/foo ../foo origin/main    # ../ escapes to /Users/x/Documents/foo ❌
+#   intended .claude/worktrees/foo, but ../foo = the repo's PARENT dir
+tail ../foo/docs/file.md                            # works HERE — same bash, cwd still repo root
+# ... later, an Edit/Write/Read with the ASSUMED path:
+# Edit /Users/x/Documents/myrepo/.claude/worktrees/foo/docs/file.md
+#   → "File does not exist"  ← MISLEADING: the file exists at /Users/x/Documents/foo/...
+```
+
+The `../<name>` reads like "a worktree beside the others" but `.claude/worktrees/` is two levels **down**, so `../` goes the wrong direction entirely. The trap is the downstream symptom: the worktree was created fine and even `tail` in the *same* bash worked (cwd-relative), but the next file-tool call uses a hard-coded absolute path under `.claude/worktrees/` and reports the file missing — pointing you at the file, not at the worktree's real location.
+
+**Guards (in addition to the absolute-path rule above):**
+1. To match the convention, pass the **full intended path**, not `../`: `git worktree add .claude/worktrees/<name> <ref>` (from the project root) or the absolute equivalent.
+2. **Resolve the worktree's REAL path before constructing absolute paths for Read/Edit/Write:**
+   ```bash
+   git worktree list | grep <name>   # the path column is the source of truth
+   ```
+   Use that exact path — never an assumed `.claude/worktrees/<name>` — when the next tool call needs an absolute path.
+3. If you see a file-tool "file does not exist" right after a `git worktree add`, suspect the worktree location before suspecting your file path.
+
+## Variant (v1.2): drifted cwd makes `git diff -- <repo-relative-path>` return EMPTY while `--stat` shows the change
+
+Same root cause (main-shell cwd persisted into a subdir after an earlier `cd`), different — and very disorienting — symptom: **git pathspecs are resolved relative to cwd, but `--stat`/`--name-only` without a pathspec report against the repo root.** So the two disagree, and the file *looks* both changed and unchanged at once:
+
+```bash
+# earlier in the session, cwd drifted into a subdir:
+cd /repo/<analytics_pkg>/cloudrun/cr_client_dashboard && python -m pytest ...   # persists cwd
+
+# later, trying to inspect a commit that DID touch bq_queries.py:
+git show --stat HEAD | grep bq_queries          # → "bq_queries.py | 62 ++++--"  (file IS in the commit)
+git diff HEAD~1 HEAD -- <analytics_pkg>/cloudrun/cr_client_dashboard/bq_queries.py
+# → EMPTY  ❌  (pathspec resolved from cwd = .../cr_client_dashboard/<analytics_pkg>/... which doesn't exist)
+git show HEAD:<analytics_pkg>/.../bq_queries.py | grep <symbol>   # → matches (object-name form is cwd-INDEPENDENT)
+```
+
+The tell is the **contradiction**: `git show --stat` / `git diff A B --stat` (no pathspec) lists the file as changed, but `git diff A B -- <repo-relative-path>` returns nothing, and `git show HEAD:<path>` (a `<rev>:<path>` *object name*, which is always repo-root-relative) shows the content fine. When a pathspec-filtered git command comes back empty but the unfiltered `--stat` disagrees, suspect cwd drift **before** suspecting the commit, the branch, a `.gitattributes` `-diff` driver, or a bad range.
+
+**Guards:**
+1. `pwd` when a pathspec-filtered git result surprises you — the harness's own "Shell cwd was reset to …" tool-result lines are reporting the drift, not just noise.
+2. Prefer a leading `cd /abs/repo/root && git diff … -- <path>` for any pathspec-filtered inspection, OR use the cwd-independent `git show <rev>:<path>` / `--stat` (no pathspec) forms.
+3. A `cd` inside a **compound** Bash command (`cd X && cmd`) still mutates the persistent cwd for every later call — it is not scoped to that one command.
+
 ## Notes
 
 - Branch and push behavior are NOT affected because git tracks worktrees by `.git/worktrees/<name>` metadata, not by filesystem path. So this bug is silent — you only notice when a subagent reports a path mismatch or when you try to `git worktree remove` from the project root.
+- Variant v1.2's pathspec trap is not worktree-specific — it bites in any repo the moment cwd drifts into a subdir — but the fix is identical (absolute paths / repo-root `cd` / cwd-independent git forms), so it lives here with the other cwd-drift symptoms.
 - This is a property of the Claude Code Bash tool specifically. Other tools (e.g., Edit, Write, Read) don't have a persistent cwd — they take absolute paths or resolve against the project root.
 - The subagent variant (`subagent-bash-cd-wrong-worktree`) describes the opposite failure mode: subagent shells reset cwd per call, so a `cd` followed by `git commit` in a *separate* Bash call commits to the parent repo's HEAD. Both are real, and the fix is the same: use absolute paths and verify with `pwd` before any state-changing command.
 

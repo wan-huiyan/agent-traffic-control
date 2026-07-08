@@ -19,6 +19,7 @@ description: |
 author: Claude Code
 version: 1.1.0
 date: 2026-05-13
+disable-model-invocation: true
 ---
 
 # Synthetic ID Collision During Multi-Session PR Rebase

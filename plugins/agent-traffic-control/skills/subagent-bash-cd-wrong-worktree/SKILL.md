@@ -13,6 +13,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-05
+disable-model-invocation: true
 ---
 
 # Subagent + bash `cd` + multi-worktree → commit lands on wrong branch
@@ -172,3 +173,7 @@ specific branch), cherry-pick the auth commit onto the target worktree.
   from inside a worktree shows the outer working tree's branch (which can be ANY
   sibling worktree's branch), not main; use `git ls-tree origin/main <path>` to
   verify what's actually on main
+- `subagent-read-stale-worktree-needs-head-pin` — sister gotcha for READ-ONLY
+  subagents: an Explore/audit agent given a worktree path can still read a stale
+  sibling worktree and return confidently-wrong line numbers (no error). Pin the
+  path AND make the agent verify `git rev-parse HEAD` before reading.

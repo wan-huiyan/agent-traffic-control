@@ -14,6 +14,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-01
+disable-model-invocation: true
 ---
 
 # Git Diff 2-dot vs 3-dot — Merge Safety Assessment

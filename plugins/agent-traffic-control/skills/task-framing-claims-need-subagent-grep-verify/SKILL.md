@@ -22,6 +22,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-27
+disable-model-invocation: true
 ---
 
 # Task-framing claims need sub-agent grep-verify

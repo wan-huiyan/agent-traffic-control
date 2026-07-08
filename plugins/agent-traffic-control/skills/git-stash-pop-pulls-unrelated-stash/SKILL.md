@@ -16,6 +16,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-15
+disable-model-invocation: true
 ---
 
 # `git stash pop` pulls an unrelated stash when preceding `git stash` was a no-op

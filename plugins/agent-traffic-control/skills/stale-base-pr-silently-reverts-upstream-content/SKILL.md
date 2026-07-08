@@ -26,6 +26,7 @@ description: |
 author: Claude Code
 version: 1.1.0
 date: 2026-05-14
+disable-model-invocation: true
 ---
 
 # Stale-Base PR Silently Reverts Upstream Content via Textual Overlap

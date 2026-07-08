@@ -11,10 +11,13 @@ description: |
   unsupported / appears in no source / looks fabricated" — before accepting it,
   check whether the gap is in a source YOU abridged. An agent fed a partial
   source reports confident FALSE-POSITIVE "unsupported" verdicts on exactly the
-  regions you trimmed out.
+  regions you trimmed out. (4) you are FANNING OUT several verifiers, each
+  scoped to a DIFFERENT SUBSET of sources matched to a doc section — a claim
+  anchored to a source outside one verifier's slice gets false-flagged by that
+  verifier even though every source is complete (see Variant).
 author: Claude Code
-version: 1.0.0
-date: 2026-05-20
+version: 1.1.0
+date: 2026-06-25
 ---
 
 # Fact-check subagents need complete primary sources
@@ -86,6 +89,39 @@ Checking the full Google Doc showed the abridged-out section did contain X. The
 claim was correct; the false positive came entirely from the abridged dump. Fix
 applied: the document claim stood, and the lesson was to attach the real
 document next time, not a transcription.
+
+## Variant — partitioned source sets across PARALLEL verifiers (fan-out)
+
+A second, sneakier trigger: every source file is **complete**, but you fan out
+N verifiers and give each one a **different subset** of sources (e.g. one
+verifier per doc section, each handed only the sources that section draws on).
+A claim that is **anchored to a source in a different verifier's slice** then
+gets a confident FALSE-POSITIVE "unsupported / no basis in any source" from the
+verifier whose slice excludes it — even though nothing was abridged. This is
+common when the consolidated/summary doc reconciles numbers across *multiple*
+analyses (e.g. a value from anchor-A re-used in a section the verifier only got
+anchor-B sources for).
+
+**Tells:** the flag says "appears nowhere" for a number you KNOW you sourced;
+the flagged value is one that legitimately came from a *cross-cutting* or
+*earlier-round* source (a prior sweep, a sibling night, a different anchor) that
+this particular verifier wasn't handed.
+
+**Mitigations (cheapest first):**
+1. When the doc reconciles across rounds, give EVERY verifier the full
+   provenance set for cross-cutting claims (or a shared "provenance index"),
+   even if each verifier's deep-read is scoped to its section.
+2. Tag load-bearing numbers in the doc with their source anchor inline, so a
+   scoped verifier can see "this is from source X (not in my slice)" and mark it
+   UNVERIFIABLE rather than INACCURATE.
+3. On receipt: before deleting a flagged number, grep the FULL source set (not
+   just that verifier's slice) for it. If it traces to an out-of-slice source,
+   the verdict is a scope false-positive — keep the number, and *sharpen its
+   provenance* in the doc (cite the anchor) rather than removing it.
+
+The discriminator vs a real error: a real error means the number matches NO
+source at any anchor; a scope false-positive means it matches a source the
+verifier simply wasn't given.
 
 ## Notes
 

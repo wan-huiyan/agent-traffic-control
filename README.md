@@ -18,7 +18,7 @@ A coordination toolkit of 61 [Claude Code](https://claude.com/claude-code) skill
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 61 skills
+# Install the plugin — one shot, gets all 62 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -26,7 +26,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The five buckets
 
-The 61 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
+The 62 skills split into a **before / during / after / orchestrator-aware / merge-mechanics** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -136,6 +136,8 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 
 ## Version history
 
+- **v1.6.0** (2026-07-08) — Refreshed 53 skills with their latest content (expanded worked examples, recovery steps, and sister-skill cross-references) and generalized every worked example to neutral placeholders (`the-project-repo`, `<analytics_pkg>`, `<user>`, `<org>`) so the toolkit carries methodology without engagement-specific details. Also fixed a version-drift bug where `marketplace.json` lagged the plugin at 1.4.0. Total: 62 skills.
+- **v1.5.0** (2026-07-06) — Added `gh-pr-pickup-designated-branch-supersede` (E. Squash/merge mechanics): picking up a designated branch that supersedes an earlier PR. Total: 62 skills.
 - **v1.4.0** (2026-06-01) — Added 4 skills (2 to D. Subagent integrity: `code-review-subagent-fabricates-specifics-to-inflate-severity`, `db-access-review-subagent-needs-explicit-probe-budget`; 2 to E. Squash/merge mechanics: `gh-pr-merge-squash-stdout-shows-sibling-files-as-created`, `solo-repo-branch-protection-stable-gate-and-self-merge`) and expanded `multi-agent-skill-silent-phase-compression` with section 7 (forcing-function terminal-output row for droppable late steps in single-agent long skills). Total: 61 skills.
 - **v1.3.0** (2026-05-29) — Added 24 skills (1 to A, 8 to B, 5 to C, 7 to D, 3 to E) drawn from the parallel-session / worktree / subagent-orchestration lesson backlog, and refreshed 6 existing skills with expanded content (`gh-pr-merge-worktree-checkout-trap`, `stacked-pr-base-branch-deletion-auto-closes-dependent`, `stale-base-pr-silently-reverts-upstream-content`, `subagent-pre-existing-misattribution`, `synthetic-id-collision-rebase`, `pr-followup-commit-stranded-after-squash`). Total: 57 skills.
 - **v1.2.0** (2026-05-13) — Renamed repo `agent-squad-hr` → `agent-traffic-control`. Added 10 new skills (2 to A, 4 to B, 2 to C, 1 to D, 1 to E). Dropped `pr-conflict-site-regen` as too project-specific (the reusable kernel is already covered by `merge-conflict-generated-files`). Refreshed 3 existing skills with latest content. Total: 33 skills.

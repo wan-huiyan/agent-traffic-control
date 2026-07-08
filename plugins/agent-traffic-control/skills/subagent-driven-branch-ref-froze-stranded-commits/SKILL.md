@@ -36,6 +36,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-18
+disable-model-invocation: true
 ---
 
 # Subagent-driven session left commits stranded — branch ref froze while worktree HEAD advanced

@@ -21,6 +21,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-10
+disable-model-invocation: true
 ---
 
 # Stale handoff prompt: user hints newer state landed since authoring
@@ -184,6 +185,12 @@ seeing wrong event chips on the A1 card.
   catches when a subagent claims a task is its own work when it was actually done in
   a prior session. That skill protects against attribution drift; this skill protects
   against scope drift.
+- **Adjacent to but distinct from** `procedure-doc-reads-pending-but-already-shipped`
+  (global): the NO-HINT variant — same "a procedure doc's tense lies about its execution
+  state" family, but there the user gives no `#N` hint and you must self-discover during a
+  "confirm/verify/execute" request that a parallel session already ran the doc. This skill
+  fires on an explicit user hint + gates on AskUserQuestion; that one fires on a live-state
+  probe you initiate yourself.
 - **Adjacent to but distinct from** `auto-mode-handoff-deploy-permission-still-denied`
   (global): also about handoff execution, but the failure mode is "Bash permission
   classifier denies despite AskUserQuestion answer" rather than "prompt's premise has

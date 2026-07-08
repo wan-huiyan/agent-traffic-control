@@ -19,6 +19,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-26
+disable-model-invocation: true
 ---
 
 # /session-handoff pre-flight: detect prior orphan branch + PR before writing a new handoff doc

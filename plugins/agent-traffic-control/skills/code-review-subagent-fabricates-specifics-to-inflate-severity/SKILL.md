@@ -28,6 +28,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-29
+disable-model-invocation: true
 ---
 
 # Code-Review Subagents Fabricate Specific Evidence to Inflate Severity
@@ -233,7 +234,7 @@ If I had treated B1 as a real BLOCKING, I would have:
   `task-framing-claims-need-subagent-grep-verify`,
   `subagent-pre-existing-misattribution`,
   `code-reviewer-subagent-no-bash-blocked-on-pr-diff`
-- Originating session: a client causal-impact engagement's code-review PR (2026-05-29)
+- Originating session: PR #206 in <org>/the-causal-impact-repo (2026-05-29)
 - Related concept: in psychometrics, "fluency" effects — confident,
   specific-sounding claims are over-trusted regardless of truth value.
   The fix is forced verification of the specifics, not trust calibration.

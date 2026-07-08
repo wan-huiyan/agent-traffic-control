@@ -14,6 +14,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-22
+disable-model-invocation: true
 ---
 
 # `git commit --amend` hits the async post-commit hook's commit

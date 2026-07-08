@@ -120,7 +120,7 @@ git add <generated-output-1> <generated-output-2>
 
 ```bash
 # Run whatever command produces the output files
-python3 docs/generate_site.py
+python3 docs/generate_website.py
 # or: npm run build:docs
 # or: make html
 # or: openapi-generator generate ...

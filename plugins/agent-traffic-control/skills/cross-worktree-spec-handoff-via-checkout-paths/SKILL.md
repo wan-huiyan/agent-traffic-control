@@ -20,9 +20,22 @@ description: |
   `git log --all --oneline --diff-filter=A -- "<path>"` + `git branch -a
   --contains <sha>` to find which branch holds it, then `git show
   <branch>:<path>` for read-only access without modifying your tree.
+  v1.2.0 (2026-06-30) adds the clean-PR-extraction variant: to land a
+  mergeable SUBSET of your work onto main when it sits on a branch SHARED
+  with an active parallel session (or tangled with DO-NOT-MERGE content),
+  spin a THROWAWAY worktree off origin/main and `git checkout <shared-branch>
+  -- <safe paths>` into it — never branch-switch the shared worktree (it
+  yanks the parallel session's files). Covers the `gh pr merge
+  --delete-branch` cleanup footgun when main is checked out elsewhere.
+  v1.3.0 (2026-06-30) adds the cwd-relative-pathspec trap to the
+  diagnostic-search variant: `git log -- <root-relative-path>` returns
+  EMPTY when run from a subdir (git pathspecs are cwd-relative), masking a
+  file that IS committed on your own branch; use `git log --all --name-only
+  | grep`, `git -C <root>`, `git show <ref>:<path>`, or an absolute-path
+  Read instead.
 author: Claude Code
-version: 1.1.0
-date: 2026-05-26
+version: 1.3.0
+date: 2026-06-30
 ---
 
 # Cross-worktree spec handoff via `git checkout <branch> -- <paths>`
@@ -114,6 +127,20 @@ Step 1→4 checkout flow below is for when subagents or downstream tooling
 need the file to exist on disk in your worktree.
 
 If `git log --all --diff-filter=A -- <path>` returns empty:
+- **You're in a subdir/worktree and the pathspec is repo-root-relative.**
+  `git log -- <path>` resolves `<path>` relative to your CWD, so a
+  root-level `docs/handoffs/foo.md` queried from inside
+  `docs/deliverables/.../sub/` matches nothing and returns EMPTY — even
+  though the file is committed on your own branch. (Same trap bites
+  `find .`, which only searches from cwd, so it ALSO comes up empty and
+  the two together read as "the file was never committed".) Fix with a
+  cwd-independent search: `git -C <repo-root> log -- <path>`, or drop the
+  pathspec and grep the name list
+  `git log --all --name-only --pretty=format: | grep -i <pattern>` (that
+  list is repo-root-relative). Asymmetry worth memorizing: `git show
+  <ref>:<repo-root-path>` and `git ls-tree` ARE repo-root-relative, so they
+  resolve the file when `git log -- path` from the same cwd doesn't — and an
+  absolute-path `Read` always works regardless of cwd.
 - The file was committed under a different filename (was renamed) — try
   without the path filter: `git log --all --oneline --grep="session_NN"`
 - The file was never committed (only exists on someone else's local
@@ -124,6 +151,51 @@ If `git log --all --diff-filter=A -- <path>` returns empty:
 After you confirm the branch holding the file, proceed to Step 1 below if
 you need it on disk; or just `git show <branch>:<path>` repeatedly if
 read-only access is sufficient.
+
+### Variant — extract a clean main-bound PR from a shared / parallel-active branch
+
+Added 2026-06-30 (v1.2.0). **Different goal** from the rest of this skill: not
+"unblock a consumer session", but "land a *mergeable subset* of my work onto
+`main`" when my commits sit on a branch I can't cleanly PR — because it's
+**shared with an active parallel session** and/or tangled with DO-NOT-MERGE
+content. The instinct to `git checkout -b new-branch origin/main` in the
+current worktree is a **trap**: that branch-switch yanks every file out from
+under the parallel session working in the same worktree.
+
+Trigger: (1) your doc/code work is committed on branch X; (2) X is shared with
+another live session (its `git status` shows their uncommitted WIP; `git log`
+shows their unpushed commits) OR X is a DO-NOT-MERGE branch; (3) you want only
+a clean, reviewed subset on main.
+
+```bash
+# 1. NEVER `git checkout` a new branch in the shared worktree. Spin a throwaway
+#    worktree off origin/main instead (isolated; parallel session untouched):
+git fetch origin
+git worktree add /path/to/throwaway -b docs/clean-subset origin/main
+
+# 2. From the throwaway worktree, pull ONLY the safe subset from branch X:
+cd /path/to/throwaway
+git checkout X -- docs/reviews/foo.md docs/handoffs/bar.md docs/deliverables/baz/
+git status --short | grep -iE 'gated|other-session-dir' && echo LEAK   # sanity: no gated/parallel content
+
+# 3. Commit, push the throwaway branch, PR --base main, review, merge.
+git commit -m "..."; git push -u origin docs/clean-subset
+gh pr create --base main ...
+
+# 4. Cleanup AFTER merge. `gh pr merge --delete-branch` FAILS its local step
+#    when main is checked out in another worktree ("'main' is already used by
+#    worktree at ...") — but THE MERGE STILL SUCCEEDED. Finish cleanup manually:
+gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/docs/clean-subset   # remote ref
+cd /any/other/worktree
+git worktree remove /path/to/throwaway --force
+git branch -D docs/clean-subset
+```
+
+Why a throwaway worktree (not `git show <branch>:<path>` or editing in place):
+you need the files **on disk, staged, on a branch off main** to open a PR; and
+you must not disturb the shared worktree. The throwaway isolates both. Leave
+the shared branch's push to the parallel session (pushing it would also push
+their unpushed commits). See also [[parallel-session-coedit-via-source-mtime-and-idempotent-rebuild]].
 
 ### Step 1 — confirm the diagnosis
 

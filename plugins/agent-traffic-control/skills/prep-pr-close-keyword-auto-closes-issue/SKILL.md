@@ -29,6 +29,7 @@ description: |
 author: Claude Code
 version: 1.2.0
 date: 2026-05-29
+disable-model-invocation: true
 ---
 
 # Prep PR close-keyword auto-closes issue prematurely

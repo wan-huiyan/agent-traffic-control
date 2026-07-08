@@ -22,11 +22,14 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-04-27
+disable-model-invocation: true
 ---
 
 # Multi-Agent Skill: Silent Phase Compression
 
 > Sister skill: [`multi-phase-skill-disk-reading-strategy`](../multi-phase-skill-disk-reading-strategy/SKILL.md) covers the **input-direction** version of this failure (orchestrator injecting large payloads INTO subagent prompts → degraded subagent output). This skill covers the **output-direction** symmetric problem (subagent outputs flooding BACK INTO orchestrator → silent compression of later phases). Same fix family, different failure signature. Read both.
+>
+> Related — different root cause, same symptom: [`workflow-parallel-fanout-omits-sequential-phases`](../workflow-parallel-fanout-omits-sequential-phases/SKILL.md). Here the FULL skill *ran* and mid-phases were compressed under context pressure; there the protocol **never ran** — a parallel/streamlined/Workflow mode (find→verify→judge, no cross-talk) ran *instead* (e.g. under ultracode). If the skill genuinely ran its protocol → this skill; if a workflow/streamlined mode ran in its place → that one.
 
 ## Problem
 
@@ -279,7 +282,7 @@ Diagnostic steps:
 
 4. Diff the new findings against the compressed-run findings. Net-new findings =
    the cost of the original compression. In the validated repro case, this was
-   **6 new findings including 1 P0** (a <privacy-regulation>/DPA gap that only Devil's Advocate
+   **6 new findings including 1 P0** (a FERPA/DPA gap that only Devil's Advocate
    surfaced during debate).
 
 5. File an upstream issue against the skill repo with the failure-mode
@@ -316,5 +319,5 @@ Diagnostic steps:
 - Sister skill: [multi-phase-skill-disk-reading-strategy](../multi-phase-skill-disk-reading-strategy/SKILL.md) — input-direction version
 - Cross-skill pattern reference: [overnight-insight-discovery](../overnight-insight-discovery/SKILL.md), [successor-handoff](../successor-handoff/SKILL.md), [cloud-run-results-bq-postsync](../cloud-run-results-bq-postsync/SKILL.md), [dual-cloudrun-job-orchestration](../dual-cloudrun-job-orchestration/SKILL.md)
 - Validated repro: [agent-review-panel#35](https://github.com/wan-huiyan/agent-review-panel/issues/35) — full failure-mode analysis with 6 net-new findings demonstration
-- Repro session artifacts: `<owner>/<repo>` PRs [#116](https://github.com/<owner>/<repo>/pull/116) (compressed Run 1) and [#117](https://github.com/<owner>/<repo>/pull/117) (corrective Run 2)
+- Repro session artifacts: `wan-huiyan/the-project-repo` PRs [#116](https://github.com/wan-huiyan/the-project-repo/pull/116) (compressed Run 1) and [#117](https://github.com/wan-huiyan/the-project-repo/pull/117) (corrective Run 2)
 - Related Anthropic skill-design pattern: [using-superpowers](https://github.com/anthropic/superpowers) red-flags table approach

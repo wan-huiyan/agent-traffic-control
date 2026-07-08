@@ -11,11 +11,16 @@ description: |
   discover the PR has flipped to `CLOSED` rather than `MERGED`. The actual root cause for (1)/(2) is
   almost always pending CI / branch-protection checks, NOT real merge conflicts; the fix is `--auto`
   flag so `gh` queues the merge for when checks pass. For (3) — recovery requires restoring the remote
-  branch (`git push -u origin <branch>` from your local copy) and `gh pr reopen <N>` before retrying.
+  branch (`git push -u origin <branch>` from your local copy, OR — if you have NO local copy —
+  from `refs/pull/<N>/head`) and `gh pr reopen <N>` before retrying. (4) `gh pr merge` errors
+  `Pull Request is still a draft (mergePullRequest)` — the PR is a draft; run `gh pr ready <N>`
+  first. A cleanup step that deletes the head branch keyed on branch-EXISTENCE (not merge-success)
+  will delete a draft/unmerged PR's branch and close it — always gate deletes on `mergedAt != null`.
   Sibling to `gh-pr-merge-worktree-checkout-trap` (different failure mode — worktree holding main).
 author: Claude Code
-version: 1.0.0
-date: 2026-05-19
+version: 1.1.0
+date: 2026-06-08
+disable-model-invocation: true
 ---
 
 # `gh pr merge` UNSTABLE state + branch-delete recovery
@@ -127,9 +132,40 @@ gh pr view <N> --json state,mergeable,mergeStateStatus
 gh pr merge <N> --squash --auto
 ```
 
-If you've already discarded the local branch (e.g., `git branch -D` after the wrong-time delete),
-recovery is harder — you may need to recover commits via `git reflog` or recreate from a colleague's
-clone.
+**No local copy of the branch?** (Common when the PR was authored in another session/worktree, or
+you discarded the local branch.) The commits are still reachable via the PR's pull ref — restore the
+branch from there; no `git reflog` or colleague clone needed:
+
+```bash
+SHA=$(gh pr view <N> --json headRefOid -q .headRefOid)   # PR keeps the head SHA even after delete
+git fetch origin refs/pull/<N>/head                      # the commits live here regardless of the branch
+git push origin "$SHA:refs/heads/<branch-name>"          # recreate the branch at the EXACT SHA → PR re-links
+gh pr reopen <N>                                         # delete had flipped it to CLOSED
+gh pr ready <N>                                          # also un-draft if it was a draft (Failure C)
+gh pr merge <N> --squash                                 # the re-push may re-trigger CI → wait for it
+```
+
+### Fix Failure C — PR is a draft
+
+`gh pr merge <N> --squash` errors `GraphQL: Pull Request is still a draft (mergePullRequest)`. The PR
+is a draft; mark it ready, then merge:
+
+```bash
+gh pr ready <N>            # un-draft
+gh pr merge <N> --squash
+```
+
+The real danger is the *combination*: a "merge then clean up the branch" routine where the cleanup
+deletes the remote head ref whenever the branch still exists. On a draft PR the merge is refused but
+the branch still exists → the cleanup deletes it → the PR closes. **Gate every branch delete on
+merge-success, never on branch-existence:**
+
+```bash
+gh pr merge <N> --squash
+if [ "$(gh pr view <N> --json mergedAt -q .mergedAt)" != "null" ]; then
+  # delete remote ref only now
+fi
+```
 
 ## Verification
 
@@ -164,6 +200,14 @@ $ gh pr merge 915 --squash --auto
 `git push origin --delete docs/s207-handoff` immediately after `gh pr merge` returned the conflict
 warning — the PR flipped to CLOSED. Recovered with `git push -u origin docs/s207-handoff` +
 `gh pr reopen 915` + `gh pr merge 915 --squash --auto`.)
+
+PR #398 (a docs deliverable), 2026-06-08 — the Failure-C-plus-delete combo: `gh pr merge 398 --squash`
+errored `Pull Request is still a draft (mergePullRequest)`, but the same script's cleanup step
+(`if branch exists → gh api -X DELETE …`) ran anyway and deleted the head branch, closing the PR.
+The branch was authored in another session (no local copy). Recovered via the pull ref:
+`SHA=$(gh pr view 398 --json headRefOid -q .headRefOid)` → `git push origin "$SHA:refs/heads/<branch>"`
+→ `gh pr reopen 398` → `gh pr ready 398` → `gh pr merge 398 --squash` (waited for the re-triggered CI).
+Fix that prevented a repeat: gate the delete on `mergedAt != null`, not on branch existence.
 
 ## Notes
 

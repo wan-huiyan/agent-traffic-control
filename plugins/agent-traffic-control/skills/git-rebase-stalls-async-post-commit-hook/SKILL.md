@@ -32,8 +32,9 @@ description: |
   on `git commit`, not on rebase apply), or genuine commit-message-edit
   prompts (those open `$EDITOR` rather than printing "rescheduled").
 author: Claude Code
-version: 1.0.0
-date: 2026-05-11
+version: 1.1.0
+date: 2026-06-05
+disable-model-invocation: true
 ---
 
 # `git rebase` stalls mid-replay because async post-commit hook holds resources
@@ -303,6 +304,34 @@ retries with different env-var combinations before zeroing in on
   auto-skill-extraction). If you maintain such a project, prefer the
   `setsid` + `post-rewrite` mitigations from Step 3's "Optional"
   section to make the hook resilient by default.
+
+## Variant — `index.lock` / "Another git process seems to be running"
+
+A second observed signature of the same race: the rebase aborts mid-replay with
+
+```
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. ... remove the file manually to continue.
+```
+
+i.e. the background hook subprocess held `.git/.../index.lock` while the rebase
+tried to apply the next commit. Two things that look alarming but are fine:
+
+1. **The working tree shows your changes "reverted".** The rebase had checked out
+   an *intermediate* replayed commit (e.g. an early `feat:` commit, before your
+   later refactor commit). Editors/linters may report the touched files as
+   "modified". **Your branch ref still points at the original tip** —
+   `git rev-parse <branch>` and `git log --oneline <branch>` confirm all commits
+   are intact (commits are immutable; only the working-tree checkout moved).
+2. **Recovery:** `git rebase --abort` (restores the branch tip + working tree),
+   confirm `feature/...` content is back, then retry. If the lock has cleared
+   (the hook subprocess finished), a plain `git rebase origin/main` now succeeds
+   cleanly. If it stalls again, use the deterministic fix above:
+   `git -c core.hooksPath=/dev/null rebase origin/main`.
+
+(2026-06-05: hit during an S98 docs/feature session — a background `gh`/test
+process + the async doc hook coincided with a `git rebase origin/main`; abort +
+retry recovered, all commits intact.)
 
 ## Sister skills
 

@@ -15,6 +15,7 @@ description: |
 author: Claude Code
 version: 1.1.0
 date: 2026-05-19
+disable-model-invocation: true
 ---
 
 # Follow-up commits stranded after PR squash-merge

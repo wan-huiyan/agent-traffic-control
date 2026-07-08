@@ -11,8 +11,9 @@ description: |
   (4) unfamiliar files/changes appear in `git status`. Covers detecting the
   collision and recovering via an isolated git worktree.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-21
+version: 1.1.0
+date: 2026-06-23
+disable-model-invocation: true
 ---
 
 # Concurrent session's `git checkout` clobbers your shared working directory
@@ -86,6 +87,19 @@ files in, re-apply the lost `config.py` edit, `git checkout app/main.py` + `rm`
 the strays in `repo/`, then `EnterWorktree` and carry on — committing each task.
 
 ## Notes
+
+### Variant — a stale `index.lock` blocks BOTH concurrent sessions (v1.1.0)
+Symptom: `git commit`/`git add` fails with `Unable to create '.git/.../index.lock': File exists.
+Another git process seems to be running`. In a shared worktree this often is **not** an active git
+op — it's an **orphaned lock** from an earlier commit that was killed (e.g. a session interrupted
+mid-commit), and it blocks *every* session sharing the directory, including a parallel one that's
+sitting in a retry loop waiting for the lock to clear (so nobody makes progress). Diagnose stale vs
+active before removing:
+- **Lock age**: `python3 -c "import os,time;p='.git/worktrees/<wt>/index.lock';print(round(time.time()-os.path.getmtime(p)))"` — a multi-minute-old, 0-byte lock is almost certainly orphaned.
+- **No active git op**: `ps aux | grep -E '[g]it (commit|add|push|merge|rebase)'` returns nothing (a sibling's *polling shell loop* may appear, but that's not a git op holding the lock — its own args often reveal it's waiting on the same lock).
+Then `rm -f` the lock and commit **specific paths** with a short retry guard (the sibling may grab
+the freed lock first; loop 3–5× with a `sleep 2`). Removing it unblocks *both* sessions. Only remove
+after both checks pass — deleting a lock held by a live git process corrupts the index.
 
 - Prevention: when starting isolated feature work, create a worktree *first*
   (the `using-git-worktrees` skill). Shared-directory work is only safe for a

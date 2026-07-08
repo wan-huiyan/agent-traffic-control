@@ -14,8 +14,9 @@ description: |
   pattern), branch-checked-out-elsewhere errors (use `gh-pr-merge-worktree-checkout-trap`),
   or single-worktree corruption (different cause).
 author: Claude Code
-version: 1.1.0
-date: 2026-05-29
+version: 1.0.0
+date: 2026-05-06
+disable-model-invocation: true
 ---
 
 # Worktree index corruption from async post-commit hooks
@@ -184,17 +185,7 @@ eliminated the race for the rest of the merge sequence.
 
 - This is distinct from `.git/index.lock` errors (different fix: just
   remove the lock file) and from `error: cannot lock ref` (concurrent
-  ref-update race, different fix). **Sibling — stale lock file in a worktree:**
-  if an async post-commit hook is configured, its background `git` op can leave
-  a stale lock and your next `add`/`commit`/`commit --amend` fails with
-  `fatal: Unable to create '.../index.lock': File exists. Another git process
-  seems to be running…`. In a **worktree** the lock lives at
-  `.git/worktrees/<worktree-name>/index.lock`, **not** the top-level
-  `.git/index.lock` — that path indirection is the gotcha. It **recurs** across
-  a rapid commit/amend/merge chain (each hook firing can re-leave it). When you
-  are sure no real `git` process is running (the hook's is async and already
-  exited), the fix is `rm .git/worktrees/<worktree-name>/index.lock` then retry
-  the command — verified safe + repeated across a 5-PR chain, S77d 2026-05-29.
+  ref-update race, different fix).
 - The error message is misleading. It names the worktree where the command
   was run, not the worktree whose hook caused the race. `git fsck` is the
   diagnostic that reveals the cross-cut.

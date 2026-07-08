@@ -13,6 +13,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-04-15
+disable-model-invocation: true
 ---
 
 # Multi-Phase Skill: Disk-Reading Strategy for Late-Pipeline Subagents
@@ -146,4 +147,4 @@ After applying this pattern:
 ## References
 
 - agent-review-panel PR #26: https://github.com/wan-huiyan/agent-review-panel/pull/26
-- Failure evidence: a much earlier session run (2 of 3 files), S81 run (generic HTML on manual request)
+- Failure evidence: S76b run (2 of 3 files), S81 run (generic HTML on manual request)

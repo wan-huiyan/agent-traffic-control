@@ -16,6 +16,7 @@ description: |
 author: Huiyan / Claude Opus 4.8
 version: 1.0.0
 date: 2026-05-29
+disable-model-invocation: true
 ---
 
 # `gh pr merge --squash` stdout shows sibling-PR files as "created" — don't panic, check the commit

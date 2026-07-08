@@ -16,6 +16,7 @@ description: |
 version: 1.0.0
 date: 2026-05-27
 author: Huiyan / Claude Opus 4.7
+disable-model-invocation: true
 ---
 
 # Squash Merge Content Preservation vs Ancestor Check

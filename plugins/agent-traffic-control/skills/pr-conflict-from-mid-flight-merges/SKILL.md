@@ -138,7 +138,8 @@ Expect:
 - `mergeStateStatus: "CLEAN"`
 - The `commits` array shows only your real changes (no `WIP`, no stray cherry-picks, no commits whose message refers to a sibling PR's topic)
 
-## Example (anonymised)
+## Example (real, 2026-04-27)
+
 PR #38 was opened on `docs/readme-panel-p0-fixes` against main, with one commit: README P0 fixes from a panel review. Hours later, gh said:
 ```
 {"baseRefName":"main","headRefName":"docs/readme-panel-p0-fixes","mergeStateStatus":"DIRTY","mergeable":"CONFLICTING"}

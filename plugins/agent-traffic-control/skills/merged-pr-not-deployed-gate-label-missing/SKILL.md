@@ -16,10 +16,16 @@ description: |
   correctly works and the PR simply didn't satisfy it). Trigger phrases:
   "I can't see the changes live", "merged but not deployed", "PR shipped
   but prod didn't update", "the auto-deploy workflow shows skipped", "do I
-  need to deploy manually after merge?".
+  need to deploy manually after merge?". ALSO covers the INVERSE trap (v1.2.0):
+  an `actions/labeler` auto-applied `auto-deploy` to a config/docs-only PR (e.g.
+  `cr_client_dashboard/monitoring/*.yaml`, README, ADR) that lives under the
+  deployable path glob but never affects the built image — so merging fires an
+  UNWANTED redeploy. Trigger: "why does my monitoring/docs PR have the auto-deploy
+  label", "remove auto-deploy before merge", "config PR triggered a redeploy".
 author: Claude Code
-version: 1.0.0
-date: 2026-05-11
+version: 1.2.0
+date: 2026-07-01
+disable-model-invocation: true
 ---
 
 # Merged PR Not Deployed — Gate Label / Path Filter Quietly Skipped the Workflow
@@ -142,6 +148,36 @@ ls .git/MERGE_HEAD .git/CHERRY_PICK_HEAD 2>/dev/null  # MUST be empty
 
 If preflight passes, run the deploy script from the right directory. The script likely does `gcloud builds submit ... <DIR>` which packages local files; running from a stale worktree silently rolls back recent commits (per the sister skill).
 
+### A2 — Variant: deploying from a worktree + Cloud Run **Job** baker (verified 2026-06-28)
+
+Option A's preflight assumes you can stand on the `main` branch. **In a git worktree you usually can't** (`main` is checked out elsewhere → `git checkout main` errors), and the deploy script's own git-state guard *also* refuses to run off-`main`. The clean, verified path:
+
+1. **Deploy the exact merge commit from a detached HEAD** (not a branch):
+   ```sh
+   git fetch origin --quiet
+   git checkout <merge_commit_sha>        # detached; worktree-safe (only BRANCH checkouts collide)
+   test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"   # MUST pass — you ARE on main's tip
+   test -z "$(git status --porcelain)"                              # MUST be clean — you deploy the tree as-is
+   ```
+   Do this guard *yourself* — the next step disables the script's built-in one.
+
+2. **Run the deploy script in CI mode for an image-only deploy.** Setting `CI=1` (or `GITHUB_ACTIONS=1`) is exactly what the label-gated workflow runs, and on these scripts it has a **dual effect** that is the whole point:
+   ```sh
+   CI=1 bash ./deploy_baker.sh        # or deploy_propensity_pulse.sh
+   ```
+   - skips the `[[ -z "${CI:-}" ]]` **git-state guard** (you just did it by hand from detached HEAD), AND
+   - skips the **manual-only scheduler-flip + IAM re-assert** block (`if [[ -n "${CI:-}" ]]: SKIP`).
+
+   Running it *without* `CI=1` from a workstation re-asserts the Cloud Scheduler sentinel + IAM bindings — those are already live, and the unguarded `gcloud scheduler jobs update` will `set -e` **abort the script after the image already deployed** if you lack `cloudscheduler.jobs.update`. So for a routine redeploy of already-merged code, **`CI=1` is the correct minimal action**, not a shortcut.
+
+3. **A Cloud Run *Job* (baker) image deploy is staged, not active.** Unlike a *Service* revision (live on deploy), a Job only runs the new image on its next execution. The next chained/cron bake will use it — but to make the change **visible now**, execute the job. Beware the freshness gate:
+   ```sh
+   gcloud run jobs execute <job> --region <r> --project <p> --wait
+   # → "v6 scoring not ready: MAX(scoring_date)=<yesterday> today=<today> — exiting 0"  ← gate no-op'd, NOTHING baked
+   gcloud run jobs execute <job> --args="--target-date=max" --region <r> --project <p> --wait   # force-bake freshest data
+   ```
+   The plain execute **silently no-ops** (exit 0) before today's upstream data lands; `--target-date=max` bakes against the latest available date so the change goes live immediately. Confirm the payload was rebuilt by the NEW image (query the payload table's `built_at` + a value your change controls), not just that the job exited 0.
+
 ### B — Add the missing label to the merged PR (audit trail)
 
 Even if you can't re-trigger the workflow (`pull_request: types: [closed]` only fires once), add the label so future audits can see what should have happened:
@@ -179,6 +215,15 @@ gcloud run services describe <service> --region <region> \
 ```
 
 For Cloud Run specifically, the new revision's name carries a hash; cross-reference against `gh run view <build-run-id> --json` to confirm the build-source commit matches your merge SHA.
+
+**Attribution discipline — don't blame your deploy for pre-existing alerts.** A first post-deploy run (especially a manual force-bake) often surfaces warnings/red alerts in its logs. Before attributing any of them to your change, **diff against the PRIOR run's logs** — query the same alert signature over the last few runs:
+
+```sh
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="<job>" AND textPayload:"MONITOR_ALERT:<NAME>"' \
+  --project <p> --limit 15 --freshness 3d --format='value(timestamp,textPayload)'
+```
+
+If the identical signature fired on runs *before* your deploy, it is pre-existing — file it separately, don't conflate it with your change. (2026-06-28: a baker redeploy's bake logged a red `MODEL_HEALTH worst=invariants` + a `Failed to query SHAP trend data` warning; both were proven pre-existing by the prior two days' logs — the invariants red was a model-cutover re-baseline tail, the SHAP warning a latent `model_version` column-reference bug in an *untouched* query. Neither was the deploy's fault; both became their own issues.)
 
 ## Prevention
 
@@ -251,6 +296,22 @@ Key points:
 - Fires on `synchronize` too, so if a PR gains/loses the deployable files after opening, the label stays in sync
 - Use `any-glob-to-any-file` (not `all-globs-to-any-file`) — label if ANY changed file matches ANY glob
 - Adjust the glob to match whichever paths your deploy workflow's path filter watches
+
+### Inverse trap — the auto-labeler OVER-labels a config/docs-only PR under the deployable path (verified 2026-07-01)
+
+Prevention 4 introduces the opposite failure mode. The labeler globs the *whole* deployable tree (`cr_client_dashboard/**`), but that tree contains files that **do not affect the built image** — e.g. `cr_client_dashboard/monitoring/*.yaml` (Cloud Monitoring IaC applied out-of-band via `gcloud`), READMEs, ADRs. A PR that only touches those still gets `auto-deploy` auto-applied, and because the deploy workflow's path filter *also* matches `cr_client_dashboard/**` (the `!`-exclusions only cover baker files), **merging fires a full dashboard redeploy for a change the image never sees** — redeploying whatever else is on `main`, an unintended out-of-band ship.
+
+Symptom: you open a monitoring/config/docs PR, and `gh pr view <N> --json labels` shows `auto-deploy` you didn't add.
+
+Fix — remove it before merge:
+```sh
+gh pr edit <N> --remove-label auto-deploy   # then verify: gh pr view <N> --json labels
+```
+The labeler runs on `opened`/`synchronize`, so it won't re-add after you remove it unless you push again. Confirm the deploy stayed skipped post-merge:
+```sh
+gh run list --workflow=<deploy-workflow>.yml --limit 2 --json conclusion,displayTitle   # expect "skipped" for your PR
+```
+Durable fix (if config-only PRs under the deployable path are common): tighten the deploy workflow's path filter to `!`-exclude `cr_client_dashboard/monitoring/**` (and other non-image dirs), the same way baker-only files are already excluded — so even a labeled config PR gates out.
 
 ## Notes
 

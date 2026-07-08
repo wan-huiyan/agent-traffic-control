@@ -27,8 +27,9 @@ description: |
   this v1.3 variant chokes BEFORE the server-side enable, so verifying
   with `--json autoMergeRequest` (not just `state`) is required.
 author: Claude Code
-version: 1.3.0
-date: 2026-05-27
+version: 1.4.0
+date: 2026-06-03
+disable-model-invocation: true
 ---
 
 # `gh pr merge` Worktree-on-Main Checkout Trap
@@ -194,6 +195,28 @@ root cause (the same long-lived worktree was still on main).
   for the recovery (open a fresh PR) and the prevention pattern (retarget
   the dependent PR to `main` BEFORE deleting the base branch, OR merge both
   PRs before any cleanup).
+- **WARNING — never run the API ref-delete after a merge that ERRORED (S233b
+  2026-06-03):** the `gh api -X DELETE …/refs/heads/<branch>` cleanup above is
+  ONLY safe once the merge is *confirmed landed*. If the `gh pr merge` returned
+  a transient GraphQL error — e.g. **"Base branch was modified. Review and try
+  the merge again."** (common right after you push a follow-up commit and
+  GitHub is mid-recompute) — the PR is **still OPEN and UNMERGED**. Deleting its
+  **head** ref at that point auto-closes the PR **unmerged** (and the branch is
+  gone, so a naive `gh pr reopen` fails until you re-push the branch). This is
+  the same auto-close mechanism as the stacked-PR warning above, but applied to
+  the PR's *own* head, not a dependent's base. **Do not bundle the ref-delete in
+  the same command block as the merge** — that's how it runs unconditionally
+  after a failed merge. Gate it:
+  ```bash
+  gh pr merge <n> --squash            # NO --delete-branch (it half-runs on error)
+  test "$(gh pr view <n> --json mergedAt --jq .mergedAt)" != "null" \
+    && gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>   # only if merged
+  ```
+  Recovery if you already deleted the head of an unmerged PR: `git push -u
+  origin <branch>` (re-creates the ref from your still-intact local commits) →
+  `gh pr reopen <n>` → `gh pr merge <n> --squash` (no `--delete-branch`) →
+  verify `mergedAt` → THEN delete the ref. Nothing is lost as long as the local
+  branch still holds the commits.
 - Same trap applies to `gh pr checkout <number>` if the target branch is
   already checked out elsewhere.
 - **Sequential-error variant (S8 2026-05-26, int_gtm_auditor):** if you

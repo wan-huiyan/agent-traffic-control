@@ -24,6 +24,7 @@ description: |
 author: Claude Code
 version: 1.2.0
 date: 2026-05-19
+disable-model-invocation: true
 ---
 
 # Stacked PR: Base-Branch Deletion Auto-Closes the Dependent PR

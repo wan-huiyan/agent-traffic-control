@@ -28,8 +28,9 @@ description: |
   squash-merge. Recovery: rebase `--onto origin/main feat/sN-feature
   docs/sN-handoff` to drop the smuggled commits, force-push.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-27
+version: 1.1.0
+date: 2026-06-23
+disable-model-invocation: true
 ---
 
 # Docs follow-up branch off a feature branch smuggles feature code
@@ -58,6 +59,11 @@ and definitely confusing anyone who reads the git log later.
 
 ## Context / Trigger Conditions
 
+There are two variants with different symptoms depending on whether the
+feature PR is still open or was already squash-merged to main:
+
+### Variant A — Feature PR still open (silent code smuggling)
+
 You are in this trap when **all** of these hold:
 
 1. **End-of-session handoff workflow.** You're wrapping up a session
@@ -83,6 +89,27 @@ You are in this trap when **all** of these hold:
    signal that maximises the trap's damage — reviewers may assume the
    PR can be squash-merged without scrutiny because "it's just docs".
 
+### Variant B — Feature PR already squash-merged (CONFLICTING state)
+
+This variant occurs when the feature PR **has already merged to main
+via squash**. The local feature branch tip (`feat/sN-feature`) has a
+different SHA than the squash commit that landed on main — so creating
+a docs branch from it diverges from main immediately.
+
+Symptoms differ from Variant A:
+- GitHub shows the PR as **`CONFLICTING`** (cannot merge cleanly)
+- The PR diff lists **many files** (all the feature files + the docs
+  files), not just docs
+- `git merge-base HEAD origin/main` returns an ancestor SHA well
+  before the feature merge
+- The code-reviewer agent report says something like "PR lists 18
+  files including production code" even though you only committed 2
+
+This variant is actually LESS dangerous than Variant A (the feature
+code is already on main, so squash-merging the docs PR wouldn't
+re-deploy it — it would just create a conflict), but it still blocks
+the docs PR from merging cleanly and requires a fix.
+
 ## Diagnostic — pre-merge
 
 Run BEFORE squash-merging any docs-titled PR:
@@ -105,7 +132,9 @@ git merge-base HEAD origin/main
 # older than main — possibly the feature branch's base.
 ```
 
-## Solution — rebase onto main
+## Solution
+
+### Variant A recovery — rebase onto main
 
 The standard fix is `git rebase --onto`:
 
@@ -128,6 +157,39 @@ git push --force-with-lease
 
 After force-push, `gh pr diff <N> --name-only` will refresh on the
 next call and show only the docs files.
+
+### Variant B recovery — fresh branch + git show (faster when feature already merged)
+
+When the feature is already on main, rebasing is unnecessary. It's
+faster to close the conflicting PR and create a clean branch:
+
+```sh
+# 1. Close the conflicting docs PR.
+gh pr close <N> --comment "Closing — branch based on pre-squash feature tip. Re-opening clean."
+
+# 2. Create a fresh branch off origin/main.
+git fetch origin main
+git checkout -b docs/sN-handoff-clean origin/main
+
+# 3. Extract only the docs files from the old branch — no code included.
+git show docs/sN-handoff:docs/handoffs/session_N_handoff.md \
+  > docs/handoffs/session_N_handoff.md
+git show docs/sN-handoff:docs/handoffs/session_N+1_prompt.md \
+  > docs/handoffs/session_N+1_prompt.md
+
+# 4. Commit and push.
+git add docs/handoffs/session_N_handoff.md docs/handoffs/session_N+1_prompt.md
+git commit -m "docs(sN): session handoff ..."
+git push -u origin docs/sN-handoff-clean
+
+# 5. Open the new PR.
+gh pr create --title "docs(sN): ..." --body "..."
+```
+
+Verify the new PR diff is docs-only:
+```sh
+gh pr diff <new-N> --name-only | grep -v '^docs/' && echo "TRAP" || echo "clean"
+```
 
 **Optional: refresh the PR body** if it had any "ships X, Y, Z" claims
 that the original (stacked) state contradicted. Per the
@@ -193,6 +255,48 @@ After rebase + force-push:
 - The PR's "Files changed" tab on GitHub shows the same — refresh if
   stale.
 - Squash-merge proceeds cleanly with the expected title.
+
+## Example — 2026-06-23 the project S211 (Variant B: feature already merged)
+
+End of session S211 (per-student drawer behaviour filter, PR #1360 already
+squash-merged to main as `b5871bc0`). Wrote handoff + S212 prompt. Created
+the docs branch:
+
+```sh
+git checkout -b docs/s211-session-handoff
+# HEAD was feat/s211-drivers-drawer-behaviour-filter's tip (pre-squash SHA)
+```
+
+`code-reviewer` agent caught it during the auto-merge review pass:
+
+> HIGH — Not "docs-only" and it won't merge as-is. PR lists 18 files
+> including production code (app.py, bq_queries.py, behaviour_taxonomy.py,
+> JS/CSS/HTML, tests). Branch was cut from `56e189f5` before `b5871bc0`
+> merged, so it carries a divergent duplicate of the shipped feature.
+> PR state = CONFLICTING/DIRTY.
+
+Recovery using the Variant B (fresh branch) approach:
+
+```sh
+gh pr close 1366 --comment "Closing — branch based on pre-squash feature tip."
+
+git fetch origin main
+git checkout -b docs/s211-handoff-clean origin/main
+
+git show docs/s211-session-handoff:docs/handoffs/2026-06-23-s211-...-handoff.md \
+  > docs/handoffs/2026-06-23-s211-...-handoff.md
+git show docs/s211-session-handoff:docs/handoffs/2026-06-24-s212-...-prompt.md \
+  > docs/handoffs/2026-06-24-s212-...-prompt.md
+
+git add docs/handoffs/*.md
+git commit -m "docs(s211): session handoff ..."
+git push -u origin docs/s211-handoff-clean
+gh pr create --title "docs(s211): ..."  # → PR #1370, merged cleanly
+```
+
+The reviewer also caught an internal-consistency error (§6 said
+`docs/s210-session-handoff` instead of `docs/s211-handoff-clean`) — fixed
+before the clean PR was merged.
 
 ## Example — 2026-05-27 brief-runner Session 20
 

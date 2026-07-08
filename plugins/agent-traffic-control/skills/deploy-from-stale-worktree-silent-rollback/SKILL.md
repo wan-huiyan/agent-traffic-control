@@ -27,6 +27,7 @@ description: |
 author: Claude Code
 version: 1.2.0
 date: 2026-05-07
+disable-model-invocation: true
 ---
 
 # Deploy from a stale worktree silently rolls back merged fixes

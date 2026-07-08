@@ -5,6 +5,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-19
+disable-model-invocation: true
 ---
 
 # Multi-worktree `file://` URL stale content

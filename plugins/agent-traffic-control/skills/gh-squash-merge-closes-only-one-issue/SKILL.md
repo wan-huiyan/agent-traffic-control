@@ -19,6 +19,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-07
+disable-model-invocation: true
 ---
 
 # GitHub squash-merge auto-closes only one issue per PR
@@ -140,3 +141,5 @@ Recovered with the loop above — 6 `gh issue close` calls total, ~5 seconds. Fu
 - **CLI users won't see the linked-issues UI** when they `gh pr create` from a HEREDOC. Make path A the default formatting in your PR-template scripts.
 
 - **Other auto-close keywords with the same behavior:** `Fixes`, `Resolves`. Same fix patterns apply — one keyword per issue.
+
+- **Opposite-intent sibling — closed correctly but PREMATURELY:** a single `Fixes #N` *does* fire, but you wanted the issue HELD OPEN because the fix's proof is a deferred unattended run (a cron/scheduled job that hasn't fired yet — merge ≠ proven). Use `Refs #N` (non-closing) and close manually after the run, or `gh issue reopen N` if it already auto-closed. See `verify-recurring-writer-before-unattended-window` § Notes.

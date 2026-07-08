@@ -16,6 +16,7 @@ description: |
 author: Claude Code
 version: 1.1.0
 date: 2026-05-29
+disable-model-invocation: true
 ---
 
 # Fix git pull After Squash Merge

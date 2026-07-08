@@ -15,6 +15,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-08
+disable-model-invocation: true
 ---
 
 # `gh pr create` from orchestration worktree picks wrong head branch

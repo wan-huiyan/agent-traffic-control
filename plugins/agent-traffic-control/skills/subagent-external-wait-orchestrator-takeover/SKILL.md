@@ -24,6 +24,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-08
+disable-model-invocation: true
 ---
 
 # Subagent external-wait → orchestrator-takeover
@@ -166,7 +167,7 @@ Compare to without takeover: 10-20 turns × N notifications.
 
 ## Example
 
-an earlier session Track C orchestration (2026-05-08):
+S156 Track C orchestration (2026-05-08):
 
 - Dispatched Track C subagent with brief that included "9. Verify
   auto-deploy: poll GHA workflow + `gcloud run revisions list`"

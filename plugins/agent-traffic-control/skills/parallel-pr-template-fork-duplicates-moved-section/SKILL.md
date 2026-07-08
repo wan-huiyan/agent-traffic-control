@@ -21,6 +21,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-07
+disable-model-invocation: true
 ---
 
 # Parallel-PR Template Fork Duplicates Moved Section

@@ -25,8 +25,9 @@ description: |
   the better implementation can lose on those axes and still be the right
   choice.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-08
+version: 1.1.0
+date: 2026-06-22
+disable-model-invocation: true
 ---
 
 # Pre-Tiebreaker Delta Check on Scope-Overlapping Parallel PRs
@@ -173,9 +174,9 @@ After the override decision, verify:
    the override — this is the durable record for the next session that
    reads the tracker.
 
-## Example — an earlier session / a recent multi-track session deploy-script collision (2026-05-08)
+## Example — S155 / S156b deploy-script collision (2026-05-08)
 
-A handoff prompt asked a recent multi-track session to pick a winner between PR #542 (first-mover,
+A handoff prompt asked S156b to pick a winner between PR #542 (first-mover,
 clean-against-main, single-reviewer APPROVE, wider scope incl. verification +
 handoff + tracker) and PR #553 (parallel, 31 min later, CONFLICTING-against-
 main initially, scope: #364 fix only). Prompt's recommendation: merge #542.
@@ -199,7 +200,7 @@ Pre-tiebreaker `gh pr diff` revealed three substantive improvements in #553:
 Without the delta-check, the handoff would have shipped #542 and silently
 lost all three improvements. With it: closed #542 with coordination framing
 citing the deltas, shipped #542's docs as PR #560 (small docs-only follow-
-up), captured the lesson in `id-fc` tracker entry + MEMORY.md.
+up), captured the lesson in `cat7-7fc` tracker entry + MEMORY.md.
 
 ## Notes
 
@@ -253,9 +254,28 @@ up), captured the lesson in `id-fc` tracker entry + MEMORY.md.
 - `pr-conflict-site-regen` — playbook for resolving the actual
   rebase conflicts after the delta-check picks a winner (project-specific)
 
+## Variant — the collision is discovered AFTER one fix is already DEPLOYED LIVE (v1.1)
+The base skill assumes two OPEN PRs you pick between. Higher-stakes variant: one fix is already
+MERGED + DEPLOYED to a shared live pipeline while a parallel session built/committed a DIFFERENT fix
+for the same issue. Two extra moves beyond the delta-check:
+1. **Establish ground truth from the LIVE DEPLOYED ARTIFACT — not `main`, not your branch.** Grep the
+   actually-deployed file (+ its deployed SHA / revision) for each fix's distinctive markers to learn
+   *which* fix is live. Don't reason from "my PR merged" — a parallel session's different fix may be
+   the live one, or neither may be deployed. (S266b: checked Dataform main `resolvedGitCommitSha` +
+   grepped the served `.sqlx` for `IN UNNEST` vs carry-forward markers → confirmed mine live, theirs
+   unmerged.) Sister: `version-fix-check-read-source-not-materialized-table`.
+2. **Reconcile via ATOMIC SWAP — never blind-deploy the second fix over the live one.** Deploying fix B
+   onto a pipeline already running fix A either reverts A (if B's base is stale), stacks a redundant
+   second mechanism, or drifts source↔deployed state. If B wins: revert-A + deploy-B as ONE change. If
+   A wins (already live + verified): the other session stands down. Pick ONE — never run both.
+
+(S266b 2026-06-22, `the-project-repo`: #1271 full-key-set `alien_status` flicker fix was
+live + verified when a parallel session asked to deploy a competing carry-forward fix for the same
+flicker. Verified the live serving artifact + relayed a stand-down instead of a blind deploy.)
+
 ## References
 
-- This skill was extracted from session a recent multi-track session on 2026-05-08 in the
+- This skill was extracted from session S156b on 2026-05-08 in the
   `the-project-repo` repo, working through the PR #542
   vs PR #553 collision on issue #364 (deploy script git-state guard).
   See `docs/handoffs/session_156b_finalize_s155_handoff.md` (PR #560

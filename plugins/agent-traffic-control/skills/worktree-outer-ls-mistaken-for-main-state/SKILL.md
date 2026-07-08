@@ -13,10 +13,16 @@ description: |
   branch, never guaranteed to be main. Running `ls` on the outer dir lists
   THAT branch's files, not main's. A handoff doc that says "X is on main" or
   "X was written by session S" based on outer-`ls` evidence will fail a
-  reviewer's dead-reference check and ship a fabricated claim.
+  reviewer's dead-reference check and ship a fabricated claim. v1.1 adds the GIT-STATUS
+  variant: the same frame inversion bites `git diff` / `git status` / `git log` run after a
+  `cd` into the base/outer repo — git reports the BASE working tree (a different branch with
+  its own uncommitted edits), so your worktree's changes appear to VANISH and you wrongly
+  conclude a parallel session reverted your work. Run git from your worktree (or `git -C
+  <worktree>`); never `cd` to the base repo to inspect state.
 author: Claude Code
-version: 1.0.0
-date: 2026-05-12
+version: 1.1.0
+date: 2026-06-22
+disable-model-invocation: true
 ---
 
 # Worktree: Outer-`ls` Mistaken for Main-State
@@ -191,6 +197,32 @@ Recovery commit: `fc4d523f` on `docs/s184b-summer-wow-handoff`; merged via PR #7
   some-branch`, the outer working tree keeps its current branch UNLESS the user ran a
   `git checkout` in the outer dir at some point. The instability comes from human action,
   not git itself — but the human action is invisible to a session that joined later.
+
+## Variant — `git diff/status/log` run from the BASE repo shows ITS working tree, not yours (v1.1)
+
+The same frame inversion bites with **git status commands**, not just `ls` — and it's scarier
+because your own uncommitted work appears to **vanish**. From inside a worktree, if you
+`cd /path/to/base-repo && git diff` (or `git status` / `git log`), git reports the **base
+repo's** working tree — which is parked on some *other* branch with *its own* uncommitted edits.
+Your worktree's staged changes aren't there; an unrelated file you never touched IS there. The
+instinctive read is "a parallel session reverted my work / detached my HEAD."
+
+**Worked case (the project drawer, 2026-06-22).** Mid-fix I ran `cd /…/the-project-repo && git diff --stat`
+to review my change. It showed only an unrelated `docs/deliverables/...s207...html` edit and
+NONE of my `bq_queries.py`/test changes → momentary "did my work get reverted?!" panic. Cause:
+the `cd` jumped to the **base** checkout (a different branch with its own dirty file); my changes
+were intact in the **worktree** the whole time. Running `git status -sb` *from the worktree* (no
+`cd`) showed both my modified files correctly.
+
+**The discipline:**
+1. **Run git from your worktree — never `cd` to the base/outer repo to inspect state.** Each
+   worktree has its own index + HEAD; git always reports *the working tree of the cwd*.
+2. **A "my changes disappeared" result after a `cd` is almost always wrong-cwd, not data loss.**
+   Before concluding a parallel session reverted you, check `git rev-parse --show-toplevel` and
+   `git branch --show-current` — confirm you're in the worktree, not the base repo.
+3. **Prefer `git -C <worktree-path> …`** over `cd` when you must target a specific tree, so the
+   cwd never silently changes which working tree git reads. (In this harness the Bash cwd also
+   resets between calls, compounding the confusion — see `main-bash-cwd-persists-nested-worktree`.)
 
 ## See Also
 

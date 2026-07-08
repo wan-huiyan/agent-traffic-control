@@ -14,6 +14,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-29
+disable-model-invocation: true
 ---
 
 # Code-reviewer subagents have no Bash — blocked when told to `gh pr diff`

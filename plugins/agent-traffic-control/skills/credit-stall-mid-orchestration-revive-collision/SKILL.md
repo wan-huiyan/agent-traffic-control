@@ -20,6 +20,7 @@ description: |
 author: Claude Code
 version: 1.1.0
 date: 2026-05-08
+disable-model-invocation: true
 ---
 
 # Credit-stall mid-orchestration: revive-collision recovery
@@ -44,7 +45,7 @@ Symptoms when this happens: PR has two "no issues found" review comments, force-
 storms as both agents rebase, agent A reports "PR already merged" while agent B is
 still polling CI for that same PR.
 
-**Severity ladder** (observed in an earlier session, 2026-05-08, all three originals revived ~2hr
+**Severity ladder** (observed in S156, 2026-05-08, all three originals revived ~2hr
 post-stall):
 
 1. **Best case (Track A original)**: revives mid-implementation, notices the merged
@@ -211,7 +212,7 @@ gh pr list --repo <repo> --state open \
 
 ## Example
 
-an earlier session 4-track orchestration on the project repo (2026-05-08):
+S156 4-track orchestration on the project repo (2026-05-08):
 
 1. Dispatched 3 parallel subagents (A, B, D) at 16:30; D agent merged ~16:50.
 2. Credit-balance issue hit at ~17:01 — agents A and C froze. JSONL mtimes stopped
@@ -257,7 +258,7 @@ an earlier session 4-track orchestration on the project repo (2026-05-08):
   credit errors at write-time; this skill picks up after the credit issue is real
   and resolved)
 - Related skill: `pr-conflict-site-regen` (rebase conflict resolution after
-  parallel-track collisions on `docs/site/` + `generate_tracker.py`)
+  parallel-track collisions on `docs/site/` + `generate_roadmap_backlog.py`)
 - Related skill: `using-git-worktrees` (the substrate that makes parallel tracks
   isolatable in the first place)
 - Related skill: `dispatching-parallel-agents` (when to choose parallel dispatch in

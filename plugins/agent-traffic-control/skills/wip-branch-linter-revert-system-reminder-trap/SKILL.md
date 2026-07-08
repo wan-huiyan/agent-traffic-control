@@ -22,6 +22,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-07
+disable-model-invocation: true
 ---
 
 # wip-branch-linter-revert system-reminder trap

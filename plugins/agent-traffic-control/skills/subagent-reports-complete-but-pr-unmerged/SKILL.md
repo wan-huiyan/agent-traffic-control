@@ -26,6 +26,7 @@ description: |
 author: Claude Code
 version: 1.0.0
 date: 2026-05-08
+disable-model-invocation: true
 ---
 
 # Sub-Agent Reports "Completed" While PR Is Still OPEN
@@ -127,7 +128,8 @@ gh pr list --repo <owner>/<repo> --state merged --search "merged:>=$(date -v-1d 
 
 Cross-reference against your TaskList completed rows. Any row marked completed without a corresponding merged PR (or a documented externally-closed reason — e.g. parallel session merged it) is a false positive that needs investigation.
 
-## Example: a parallel-bug-scan session
+## Example: `scan-bugs-parallel` session (2026-05-08, `the-project-repo`)
+
 Dispatched 4 sub-agents. All 4 returned `completed`. State at notification time:
 
 - PR #527: OPEN, CI green, P1 review unaddressed → parent dispatched continuation agent.
