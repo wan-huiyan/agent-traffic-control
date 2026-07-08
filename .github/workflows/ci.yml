@@ -12,3 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate marketplace + plugin structure
         run: python3 .github/scripts/validate_plugins.py
+      - name: Leak gate (client/PII identifiers)
+        run: bash scripts/leak_scan.sh .

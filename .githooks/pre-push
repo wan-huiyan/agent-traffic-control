@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Committed leak gate (pre-push). Enable once per clone:
+#   git config core.hooksPath .githooks
+# Blocks a push carrying a candidate client/PII identifier. See CONTRIBUTING.md.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$ROOT/scripts/leak_scan.sh" "$ROOT"
