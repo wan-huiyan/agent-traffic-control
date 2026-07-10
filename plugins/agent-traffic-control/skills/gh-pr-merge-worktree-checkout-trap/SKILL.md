@@ -27,8 +27,8 @@ description: |
   this v1.3 variant chokes BEFORE the server-side enable, so verifying
   with `--json autoMergeRequest` (not just `state`) is required.
 author: Claude Code
-version: 1.4.0
-date: 2026-06-03
+version: 1.5.0
+date: 2026-07-10
 disable-model-invocation: true
 ---
 
@@ -274,6 +274,26 @@ root cause (the same long-lived worktree was still on main).
   `gh pr view N --json state` returns `MERGED`. With this enable-time
   variant, `state` is still `OPEN` AND `autoMergeRequest` is `null`.
   Always check BOTH fields before concluding the PR is done.
+
+## v1.5.0 variant — the REMOTE ref survives too, and stale SHAs keep resolving (2026-07-10)
+
+When the post-merge local checkout fails, `--delete-branch`'s **remote** deletion can also be
+skipped — `git ls-remote origin <branch>` still shows the ref even though the PR reports MERGED.
+Two downstream consequences observed:
+
+1. **Docs cite SHAs that will die later.** Pre-squash commits on the surviving remote branch
+   still resolve, so a handoff/PR-body written right after the merge can cite `<sha>` "on main"
+   when it is NOT an ancestor of main — it only resolves via the leftover branch and goes dead
+   the moment someone prunes. Annotate such SHAs ("pre-squash branch commit, not on main") or
+   cite the PR number instead.
+2. **Cleanup:** delete the remote ref explicitly and verify:
+   ```bash
+   gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>
+   git ls-remote origin <branch> | wc -l   # expect 0
+   ```
+
+After ANY `gh pr merge --delete-branch` that printed the worktree error, check the remote ref —
+don't assume only the local checkout failed.
 
 ## References
 
