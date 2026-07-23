@@ -15,9 +15,20 @@ description: |
   credit-stall-mid-orchestration-revive-collision (stalled then auto-revives and races).
   Pairs with shared-file-redesign-parallel-author-serial-integrate (the no-commit → serial
   path-scoped integrate pattern that makes this degrade gracefully).
+  ALSO covers the INVERSE outcome — see "Variant: the agent died but the work SURVIVED" —
+  where a long single-owner pipeline agent commits+pushes per stage, so a mid-stream death
+  leaves finished stages already on the remote. There, redoing the task from scratch
+  duplicates landed work: reconcile against `origin/<branch>` and open PRs BEFORE the
+  working tree, re-dispatch only the missing stages, never `resumeFromRunId` (it re-runs
+  everything downstream), and after the SAME stage dies 3 times do it in the main loop.
+  AND the REVIEWER/ANALYST variant — see "Variant: the dead agent's product was its final
+  MESSAGE" — where the right move is neither redo nor re-dispatch: the agent's transcript
+  survives, the failure notification carries its partial result, and a SendMessage resume
+  ("finalize from what you have; no advisor consults; no re-reading") recovers the complete
+  deliverable in one cheap turn.
 author: Claude Code
-version: 1.0.0
-date: 2026-06-26
+version: 1.2.0
+date: 2026-07-23
 disable-model-invocation: true
 ---
 
@@ -49,10 +60,79 @@ test file exists, the todos it created for itself are all still `pending`.
    `git add <exact files>` per unit + the full check at integration. So the survivor's work
    is clean and committable independent of the casualty.
 
+## Variant: the agent died but the work SURVIVED (checkpointed pipelines)
+
+The headline case above is the *shared-file* orchestration, where agents deliberately don't
+commit — so a death means zero durable output. The **inverse** case is just as common and the
+recovery is completely different: a long, single-owner pipeline agent whose stages each
+`git commit && git push` before moving on. When that agent dies mid-stream, the finished stages
+are **already on the remote**. Treating it like the headline case — redoing the task from
+scratch — duplicates work and can clobber pushed commits.
+
+**So the reconcile step (Solution 1) has to look in the right place.** Working-tree-only checks
+lie here in the other direction: the agent's worktree may be gone or reset while its commits sit
+safely on `origin`. Check, in this order:
+
+```sh
+git fetch origin
+git log --oneline origin/<branch>          # which stages actually landed?
+gh pr list --head <branch> --state all     # did it get as far as opening a PR?
+git status --short                         # only NOW look at the tree
+```
+
+Then **re-dispatch only the missing stages**, with a brief that states what's already committed.
+
+**Do not use workflow resume.** `resumeFromRunId` re-runs everything downstream of the first
+changed call, not just the failed stage — for a checkpointed pipeline that means re-doing landed
+work. A targeted mini-workflow covering only the gap is correct.
+
+**The 3-strike escalation rule.** If the *same stage* dies three times, stop re-dispatching and do
+it in the main loop in small, individually-verified steps. Three failures on one stage is evidence
+the stage is too large for one agent context (oversized payload, long tool chains, big file
+rewrites), and a fourth dispatch will fail the same way. In S360 this is exactly how the drift
+corrections finally landed after three agent deaths on that stage.
+
+**Design implication — pick the guardrail that matches the work.** Neither pattern is universally
+right:
+
+| Work shape | Guardrail | Failure mode it buys |
+|---|---|---|
+| N agents editing SHARED files in parallel | agents do NOT commit; orchestrator integrates path-scoped | death = no output, but no index races or half-written cross-checks |
+| ONE agent, long serial pipeline, stall-prone | agent commits + pushes per stage | death = partial-but-durable progress; resume by re-dispatching the gap |
+
+Choose per-stage commits whenever the work is long enough that a mid-stream death is likely and
+the agent owns its files exclusively.
+
 ## Verification
 `git status` + a grep of each target shows exactly the expected edits from the SURVIVING
 agents and nothing from the dead one; after you finish the dead one's task, the full suite +
 type-check pass before any commit.
+
+## Variant: the dead agent's product was its final MESSAGE (reviewer/critic/analyst) — resume-finalize, don't redo
+
+When the stalled agent is a REVIEWER, CRITIC, or ANALYST — its deliverable is a structured
+final message, not file edits — the impl-agent playbook (verify tree, redo the task) wastes
+the whole review: there is no working tree to check, and re-dispatching re-pays the full
+read-and-reason cost. The recovery is different and nearly free:
+
+1. **Read the failure notification's `<result>` before deciding anything.** A mid-stream
+   stall often lands AFTER the analysis is done and BEFORE the write-up — the partial result
+   in the notification can already contain real, load-bearing findings (verified 2026-07-23:
+   a design-gate reviewer's stall message carried three corrections that shaped the fix).
+2. **SendMessage the SAME agent id** — it resumes from its full transcript — with a
+   finalize-only prompt: "Your run stalled mid-stream. FINALIZE now from what you already
+   have — do NOT consult any advisor, spawn subagents, or re-read files; write the findings
+   list directly in the specified format." Closing the expensive paths matters: the stall
+   often happened INSIDE one of them (an advisor consult), and an unconstrained resume can
+   stall the same way again.
+3. **Name the specific partial-result threads you want finalized** ("include your positions
+   on X, Y, Z from your interrupted notes") so nothing silently drops between the partial
+   and the final.
+
+Verified 2026-07-23 (DoodleRun rung-8 design gate): one resume turn recovered the complete
+structured review — including items only hinted at in the partial — at a fraction of the
+original agent's cost, with zero re-reading. Distinct from `resumeFromRunId` (workflow-level,
+re-runs downstream — still never that); this is the agent-transcript resume, which is safe.
 
 ## Notes
 - TRAP, surfaced reactively (`disable-model-invocation`): recall by grepping lessons/skills
