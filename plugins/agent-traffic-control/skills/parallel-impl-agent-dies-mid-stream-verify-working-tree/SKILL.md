@@ -27,7 +27,7 @@ description: |
   ("finalize from what you have; no advisor consults; no re-reading") recovers the complete
   deliverable in one cheap turn.
 author: Claude Code
-version: 1.2.0
+version: 1.3.0
 date: 2026-07-23
 disable-model-invocation: true
 ---
@@ -133,6 +133,21 @@ Verified 2026-07-23 (DoodleRun rung-8 design gate): one resume turn recovered th
 structured review — including items only hinted at in the partial — at a fraction of the
 original agent's cost, with zero re-reading. Distinct from `resumeFromRunId` (workflow-level,
 re-runs downstream — still never that); this is the agent-transcript resume, which is safe.
+
+**Sub-variant — killed by a SESSION/CREDIT LIMIT, resumed after the reset (verified
+2026-07-23, DoodleRun rung-9 fable critique):** the same transcript-resume works when the
+kill cause is "You've hit your session limit" (agent terminated on a terminal API error),
+even HOURS later after the limit resets, and even when the agent had NOT yet produced its
+deliverable — it had only finished its reading (33 tool uses) and died right before its
+compute step. The resume prompt then says CONTINUE, not just finalize: "you were cut off
+right before writing your recompute script — write it now, run it, report in the mandated
+format; do not re-read artifacts you already read, no subagents, no advisor." Result: the
+complete adversarial report in 2 tool uses / ~2.5 min, versus re-paying the entire
+read-phase on a fresh dispatch. Two extra rules for the limit case: (a) if the world moved
+during the outage (e.g. a merge landed on the branch), state the delta in the resume
+message and mark which changes are expected-context vs findings; (b) the failure message's
+"PARTIAL output recovered" preamble tells you how far it got — calibrate the resume verb
+(finalize vs continue) to that.
 
 ## Notes
 - TRAP, surfaced reactively (`disable-model-invocation`): recall by grepping lessons/skills
