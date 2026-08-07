@@ -1,21 +1,17 @@
 ---
 name: solo-repo-branch-protection-stable-gate-and-self-merge
 description: |
-  Configure GitHub branch protection on a solo-maintained repo so red/broken changes
-  can't reach main, WITHOUT locking yourself out (no second reviewer needed). Use when:
-  (1) a bad commit reached main because CI only runs after a direct push, (2) you want a
-  server-side guarantee that direct pushes are blocked and the test check must be green,
-  (3) "require status checks" alone isn't blocking direct pushes. Covers three non-obvious
-  traps: matrix CI check-runs are named "test (20)"/"test (22)" not the workflow name, so
-  pin a STABLE aggregation gate job instead; required_status_checks alone only gates PR
-  MERGES (you also need require-PR to block direct pushes); and required_approving_review_count:0
-  lets a solo maintainer self-merge. See also: claude-plugin-repo-ci-release,
-  consistency-test-checks-one-file-leaves-sibling-unguarded, gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes.
+  Lock main on a solo repo so nothing red lands and you are not locked out — no second
+  reviewer needed. Use when something broken reached main by direct push (CI runs too late to
+  block it), or status checks are required and pushes still land. Traps: a matrix names check
+  runs `test (20)`/`test (22)`, not the workflow name, so require a stable aggregation gate
+  that fails, not skips; `required_status_checks` gates merges, not pushes; and
+  `required_approving_review_count: 0` is what lets you self-merge — `enforce_admins` does the
+  OPPOSITE, it removes your bypass. Not for an undeployed merge.
 author: wan-huiyan
 version: 1.0.0
 date: 2026-06-01
 ---
-
 # Solo-Repo Branch Protection: Stable Gate + Self-Merge
 
 ## Problem
@@ -68,9 +64,17 @@ also require a pull request (`required_pull_request_reviews` must be present/non
 
 ### Trap 3 — Solo self-merge
 
-Set `required_approving_review_count: 0` — a PR is required, but zero approvals, so you
-can merge your own PR once the check is green. `enforce_admins: true` makes it a real
-guarantee (even the owner can't bypass).
+**`required_approving_review_count: 0` is the whole of it.** A PR is required, but zero
+approvals are, so you can merge your own PR once the check is green. GitHub will not let
+you approve your own pull request, so any value ≥ 1 deadlocks a solo maintainer outright.
+
+**`enforce_admins` is not part of that and does the opposite of what its placement here
+suggests.** The REST docs are explicit: *"Enforce all configured restrictions for
+administrators. Set to true to enforce required status checks for repository
+administrators."* It APPLIES the rules to admins — it removes the bypass an owner would
+otherwise have. So it is what makes the gate real, and it is also the switch you flip to
+`false` if you ever need to get past your own protection (see Emergency lift below). It
+never grants a merge. Do not cite it as the reason self-merge works.
 
 ### Apply it
 
@@ -122,3 +126,12 @@ with Read when one of these matches what you are looking at.
 
 - [`workflow-run-deploy-gate-fork-pr-ref-name-escalation`](../workflow-run-deploy-gate-fork-pr-ref-name-escalation/SKILL.md) — a deploy gated on `on: workflow_run` and a branch name can be escalated from a fork PR
 - [`merged-pr-not-deployed-gate-label-missing`](../merged-pr-not-deployed-gate-label-missing/SKILL.md) — the PR merged and CI is green but production never got it — a deploy gate label was missing
+
+## Neighbouring skills
+
+These were named in this skill's description until v1.18.0. The description is
+resident in context on every turn, so a cross-link there costs budget on every
+turn and buys nothing -- a user never types another skill's name. They belong
+here, where the model reads them once retrieval has already succeeded.
+
+- [`gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes`](../gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes/SKILL.md)
