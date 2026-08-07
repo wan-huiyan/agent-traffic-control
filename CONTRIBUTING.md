@@ -108,6 +108,28 @@ do not clear them with a number.
 actually saw — not the full oversized source. **If a PR quotes coverage figures, the eval suite
 must be committed under `scripts/eval/`.** An unreproducible table is worse than no table.
 
+**Write the positive prompts from the skill's BODY, with the frontmatter unopened.** A prompt
+written from the description it will later score measures whether the *words* survived, not
+whether the *trigger* did — the suite agrees with the description by construction and cannot
+report a loss. The mechanical form of that rule: reject any positive that shares a four-word
+run with the current description. It fired on 29 of the **231 positive prompts written for
+v1.17.0** — the 11 new suites only, 21 positives each — including four in
+`gh-issue-claim-coordination` that were verbatim quoted phrases out of its own description;
+all 29 were rephrased.
+
+**The two suites that predate v1.17.0 were never put through that rule, and it shows.**
+Re-applying it to the committed files: 0 of the 231 positives in the 11 new suites share a
+four-word run with the description they were scored against, against 8 of 25 in
+`cross-worktree-spec-handoff-via-checkout-paths` and 3 of 20 in `pre-dispatch-schema-probe`
+(renamed `inherited-scope-doc-names-may-not-exist` in v1.18.0). Those two also carry 25/15
+and 20/10 positives/negatives rather than 21/10. So read any figure covering "all 13 suites"
+as covering two different vintages, and re-run the rule before quoting a number from them.
+
+`scripts/eval/baseline-2026-08-07.json` holds the separation of every description **before**
+the v1.18.0 rewrite, with the commit it was measured at. Separation is how much better a
+description matches the prompts that should fire it than the prompts a neighbouring skill
+should answer. Measure against that file, not against a number quoted in a PR body.
+
 ### Getting under the cap is necessary, not sufficient
 
 A second limit, `skillListingBudgetFraction` (1% of the context window), sizes the whole
