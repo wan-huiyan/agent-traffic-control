@@ -10,7 +10,7 @@ description: |
   `required_approving_review_count: 0` is what lets you self-merge — `enforce_admins` does the
   OPPOSITE, it removes your bypass. Not for an undeployed merge.
 author: wan-huiyan
-version: 1.0.0
+version: 1.0.1
 date: 2026-06-01
 ---
 # Solo-Repo Branch Protection: Stable Gate + Self-Merge
@@ -128,6 +128,7 @@ with Read when one of these matches what you are looking at.
 
 - [`workflow-run-deploy-gate-fork-pr-ref-name-escalation`](../workflow-run-deploy-gate-fork-pr-ref-name-escalation/SKILL.md) — a deploy gated on `on: workflow_run` and a branch name can be escalated from a fork PR
 - [`merged-pr-not-deployed-gate-label-missing`](../merged-pr-not-deployed-gate-label-missing/SKILL.md) — the PR merged and CI is green but production never got it — a deploy gate label was missing
+- [`ci-leg-skipping-moves-minutes-it-does-not-remove-them`](../ci-leg-skipping-moves-minutes-it-does-not-remove-them/SKILL.md) — a filter that makes a leg skip on pull requests moves its minutes to the merge run rather than deleting them
 
 ## Neighbouring skills
 

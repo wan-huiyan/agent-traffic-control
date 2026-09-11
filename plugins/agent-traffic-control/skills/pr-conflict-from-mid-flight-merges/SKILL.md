@@ -10,7 +10,7 @@ description: |
   reset to the origin tip, rebase and force push with lease. Special case: a stated test count
   both sides added. Not for generated output.
 author: Claude Code
-version: 1.1.0
+version: 1.1.1
 date: 2026-04-27
 ---
 # PR Conflict from Mid-Flight Merges
@@ -237,3 +237,4 @@ lands anyway:
 
 - [`merge-queue-thrash-stop-inflow-and-open-prs-as-drafts`](../merge-queue-thrash-stop-inflow-and-open-prs-as-drafts/SKILL.md) — main moves faster than the slowest CI leg, so every branch goes stale before its own run finishes; stop the inflow, land one at a time, and open pull requests as drafts by default
 - [`auto-merge-rearms-while-agent-live-kill-then-disarm-verify`](../auto-merge-rearms-while-agent-live-kill-then-disarm-verify/SKILL.md) — holding one pull request out of that queue: a disarm does not hold while the PR's own agent is still running, and a draft does
+- [`batch-merge-subject-is-not-evidence-a-member-landed`](../batch-merge-subject-is-not-evidence-a-member-landed/SKILL.md) — a batch's squash subject names a member that never landed, because the batch was assembled before the member's last push
