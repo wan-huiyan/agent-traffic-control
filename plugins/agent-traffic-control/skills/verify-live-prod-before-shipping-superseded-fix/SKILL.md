@@ -47,7 +47,7 @@ handoff was accurate when written but the world moved.
    config and grep the compiled target for the markers your fix would add/remove) tells you if someone
    already changed it.
 2. **Treat "issue still OPEN" as NOT proof it's unfixed**, and chase WHY any sibling issue CLOSED. A
-   closed sibling (here #1242) is often "fixed by a PR that also resolves your issue, pending close."
+   closed sibling issue is often "fixed by a PR that also resolves your issue, pending close."
    `gh pr list --search "<file or issue>"` / `gh issue view <sibling>` for the closing PR.
 3. **Re-verify the live state IMMEDIATELY before any deploy** to a shared prod artifact. A parallel
    session can ship between your build and your deploy. NEVER blind-deploy over a shared prod file.
@@ -64,17 +64,21 @@ handoff was accurate when written but the world moved.
 - Confirm your work never reached prod (isolated dev-workspace compile / local branch only) so "stand
   down" is genuinely a no-op on prod, not a rollback.
 
-## Example (a client data-pipeline fix, #1212, 2026-06-22)
-Prompt: "ship the REAL #1212 status-flicker fix (carry-forward, scoped in #1270)." Built it fully:
-serving-only carry-forward, panel-reviewed (5-lens plan + 3-lens diff, all-opus), validated 131/131
-correct, Dataform workspace compile 0 errors. **A parallel session had shipped a DIFFERENT fix ~30 min
-in** — the full identity key-set reconstruction (#1271, `status_code_resolved` + `IN UNNEST`) — merged
-+ live on Dataform main (`346da39f`), verified. Carry-forward was redundant. The **early signal missed**:
-sibling #1242 was already CLOSED at task start (I noted it but didn't chase the closing PR). Recovery:
-verified live main had the other fix (grep compiled target: 0 carry-forward markers), confirmed my work
-was workspace-only (never touched main), deleted the dev workspace, stood down, filed the residual
-systemic finding (#1291), commented the supersession on #1212. One marginal edge of the abandoned fix was
-noted in the follow-up (defense-in-depth), but NOT atomic-swapped in.
+## Synthetic example: a service fix is superseded
+
+A handoff proposes adding request retries for intermittent lookup failures.
+While the agent implements and tests retries in an isolated environment,
+another session corrects an inconsistent cache key used by the same endpoint.
+The original issue remains open, but a related issue has closed.
+
+Reading the related issue reveals the replacement fix. Inspecting the deployed
+revision and running the agreed lookup check confirms the cache-key correction
+is live. The agent confirms its own retry implementation remains local, preserves
+useful analysis, and proposes reconciliation of the original issue. It does not
+deploy the redundant implementation over the live correction.
+
+This example is synthetic; no client schema, measured result, or deployment
+identifier is retained.
 
 ## Variant — you built NOTHING, and the deliverable is an assessment
 
@@ -83,11 +87,10 @@ implementation"*, *"you're about to deploy"*. A session whose only output is a j
 *do not deploy*, *safe to ship*, *the regression is still live* — matches none of them, so
 the skill never fires, while being exposed to exactly the same clock.
 
-**the routing app, 2026-08-07.** Three agents spent about **80 minutes** on a production-deploy
-assessment and concluded **do NOT deploy**: main shrank every route and capped a 20 km
-wish at 12.16 km. A commit pinning the route sizes landed **mid-run**. The verdict was
-false before it finished being written — and nothing in the analysis was wrong. Only its
-base was.
+Synthetic example: a deployment assessment finds a batch-size regression and
+recommends holding a release. During the review, a correction lands on main.
+The reviewers' reasoning was sound for their original base, but their final
+recommendation is stale unless they reconcile that new commit.
 
 ### Pin the base, and diff it before you publish the verdict
 
@@ -105,23 +108,18 @@ git log --oneline "$BASE"..origin/main     # empty ⇒ the verdict still stands
 Anything that comes back is a commit your conclusion has never seen. Re-check the claims
 whose inputs those commits could have moved — not the whole assessment, just those.
 
-**An assessment older than its own runtime is not evidence.** If the fan-out took 80
-minutes, a live-state check at minute 0 is 80 minutes stale by the time the verdict is
-written, and the start-of-task check prescribed above would have passed cleanly.
+**An assessment needs a current base check.** If the fan-out takes an hour,
+a start-of-task check is already an hour old when the verdict is written.
 
 ### Two things about this that are easy to get wrong
 
-- **Put the re-check at the END of the fan-out, not only at the start.** What caught this
-  was the verifier agent that ran **last**. Run only at dispatch time, the same check
-  would have *confirmed* the premise — the regression genuinely was live then — and the
-  no-go would have shipped as a fact.
-- **The window the assessment described was real — that is a separate lesson, not a
-  softening.** Before the pinning commit landed, main carried the regression for
-  **8h25m across 24 commits**. Auto-deploy-on-merge would have shipped it within seconds
-  of the merge that introduced it, which is the concrete argument that a gate between
-  merge and deploy is not optional in a repo with no human reviewer. A stale assessment
-  does not make the danger imaginary; it makes the assessment the wrong instrument to
-  lean on.
+- **Put the re-check at the END of the fan-out, not only at the start.** A final
+  verifier can catch intervening changes. A dispatch-time check establishes only
+  the starting state; it cannot establish the state when the verdict is delivered.
+- **A correction does not erase the earlier exposure.** A regression can have
+  existed before the correcting commit even when the current release is safe.
+  Record the earlier interval separately from the current deployment verdict,
+  and verify the relevant release gate against the current artifact.
 
 ## Notes
 - Distinct from siblings: `deploy-from-stale-worktree-silent-rollback` (deploying YOUR OWN stale local

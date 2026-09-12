@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 107 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 108 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 107 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 107 skills
+# Install the plugin — one shot, gets all 108 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 107 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 108 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -206,6 +206,7 @@ Failure modes of the `Workflow` tool and multi-agent orchestration — schema/St
 
 | Skill | Role |
 |---|---|
+| [**research-lane-coordinator**](plugins/agent-traffic-control/skills/research-lane-coordinator/) | Lead independent research lanes, hand validated work to a separate PR queue, and test/revise/retire guidance through an evidence-based correction loop. |
 | [**workflow-schema-agent-retry-cap-oversized-payload**](plugins/agent-traffic-control/skills/workflow-schema-agent-retry-cap-oversized-payload/) | A Workflow schema agent hits the retry cap on an oversized output — recover its work from the transcript instead of losing the whole run. |
 | [**workflow-schema-agents-empty-loop-under-ratelimit**](plugins/agent-traffic-control/skills/workflow-schema-agents-empty-loop-under-ratelimit/) | Schema agents empty-loop StructuredOutput under a rate-limit storm — detect and back off instead of burning the fan-out. |
 | [**workflow-standalone-schema-agent-crash-and-args-string**](plugins/agent-traffic-control/skills/workflow-standalone-schema-agent-crash-and-args-string/) | A standalone schema agent can crash the whole run; and `args` arrives as a JSON string — parse-guard it. |
@@ -222,10 +223,22 @@ Failure modes of the `Workflow` tool and multi-agent orchestration — schema/St
 
 ## When NOT to reach for this toolkit
 
-- **Single-session work** with no parallel-agent risk. The protocols are overhead with no benefit.
+- **Routine single-session work** with no coordination or research-retrospective need. The protocols are overhead with no benefit.
 - **Cross-team coordination across separate repos** (real merge-queue territory) — out of scope.
 
+
+## Research leadership and learning from corrections
+
+Use `research-lane-coordinator` for a multi-session research programme. It separates research direction from PR-queue operations and includes an event-driven correction loop: capture evidence, check the cause, evaluate a narrow change, then retain or retire the guidance. Memory hygiene can audit its private correction records; it is optional, and no background automation or global-memory rewrite is installed.
+
+Example: “Coordinate measurement, candidate-construction and evaluation lanes for this prototype. Keep their baselines comparable, preserve negative results, and hand only qualified changes to the queue coordinator.”
+
+For Codex, copy the `research-lane-coordinator` directory into the host's skills directory. Claude users receive it through the existing plugin installation. Keep project-specific queue policies and incident evidence outside the public skill.
+
 ## Version history
+
+- **v1.34.0** (2026-09-12) — Add research-lane coordination, a separate PR-queue handoff and an evidence-based correction loop with optional memory-hygiene integration. Sanitize eight legacy cases, preserve their corrected mechanisms, and fix two recovery examples. Generalized examples keep private project evidence out of the published workflow.
+
 
 - **v1.33.0** (2026-09-11) — **Two skills about landing work in batches, both from live incidents on 2026-09-11, and the first one nearly cost a pull request's worth of unmerged code.** **Skill 1, `batch-merge-subject-is-not-evidence-a-member-landed`.** A batch branch is assembled at some moment T from its members' heads and merges later, so its squash subject records INTENT at T and never CONTENT at merge time — anything a member pushed after T is outside the batch, with no conflict, no failing gate and nothing in the batch's own diff to notice, because that diff is complete with respect to the heads it was built from. **The measurement.** Batch #2776 in the repository this came from merged at 04:45:37Z as `b61f7fadd3` with a subject naming four members; one of them, #2767, was about to be closed as landed and was **261 added and 257 removed lines across four files** ahead of the target branch, including 78 lines in a rulings document and a behaviour change in application code. It is still open. **Two things that read as corroboration and are evidence in neither direction.** All six of that member's commits predate the batch's merge timestamp, which the mechanism guarantees and which therefore proves nothing; and the ancestry probe returns NO after any squash whether or not the content landed. **The remedy is a content comparison with exactly one expected difference** — the shared aggregate file every member appends to, where the target holds base plus EVERY member's additions and the member's branch holds base plus only its own, so it differs by construction. Confirm that one by the member's own row ids, never by the blob. **Verified with a positive control**, because a check that cannot return YES is not a check: batch #2792 the same day named #2788, and the same comparison found ancestry NO and all five of that member's files byte-identical on the target branch — landed, and the check said so for a reason the subject line could not supply. **Skill 2, `ci-leg-skipping-moves-minutes-it-does-not-remove-them`.** Where a pipeline runs a complement or backstop — the merge or push run executing exactly the legs the pull-request run skipped — a filter that makes a leg skip on pull requests REDISTRIBUTES its minutes rather than deleting them. For a branch made ready once and merged the total is unchanged; the saving is `(ready runs − 1) × the skipped legs' minutes`. **Measured over six real branches**, with their actual merged file lists, their actual ready-run counts from the API and per-leg billed minutes from those same runs: **270 → 254 billed minutes, 45.0 → 42.3 per branch, about 6%, and three of the six save EXACTLY ZERO.** **On wall clock it saves nothing** — the long pole was a different leg at a median 604 s against the 185 s and 136 s candidates for removal, so the pull request's wall clock moves by zero and the merge run gets longer. **Where the money actually is:** that repository averaged **3.7 runs to land one change**, and four small pull requests landed in a single run saved roughly **90 billed minutes** — several times the whole six-branch total, from one act of batching. The rule the skill exists to install: **ask whether a proposed CI saving removes RUNS or merely moves LEGS; only the first is money** — and name the basis beside every figure, because billed minutes and wall clock are different quantities with similar digits. **The gap was checked before either was written, and re-checked after a rebase moved the tree by eleven skills, which changed the answer for one of them.** `squash-merge-content-preservation-vs-ancestor-check` covers the ancestry half of skill 1 and nothing else does — it has no account of a subject line as evidence, of wall-clock ordering, or of the aggregate-file exception. For skill 2 the first sweep, run against v1.29.0, found **zero** skills mentioning billed minutes or CI cost. **That answer was already stale**: v1.30.0 had landed `merge-queue-thrash-stop-inflow-and-open-prs-as-drafts`, which does price CI minutes — about 46 seconds for a draft run against about 16 minutes for a full one, and 23–48% of every CI minute saved by draft-by-default over 8 days. So the honest claim is narrower than the first one: what is still uncovered is the **complement mechanism** and the **runs-versus-legs distinction**, and that skill is the worked instance of the kind that pays. Skill 2 now cross-links it as what to do, alongside `fan-out-cost-control` as the same trap in the token ledger rather than the minute one, and `merged-pr-not-deployed-gate-label-missing` as the correctness question a path filter also owes. **Both ship reference-only** and cost the shared skill listing nothing — 7,741 chars against the 8,000 budget, unmoved. Each is named from a live skill's reference-only sibling list, skill 1 from `pr-conflict-from-mid-flight-merges` and skill 2 from `solo-repo-branch-protection-stable-gate-and-self-merge`, so the route gate can reach them; both hosts take a patch bump for carrying the new row. **The version skips 1.32.0 deliberately**, because PR #54 is an open draft that already claims it; if that draft is dropped, renumber this to 1.32.0 rather than leaving the hole. Total: 107 skills + 1 hook.
 - **v1.31.0** (2026-09-02) — **New skill: `fan-out-cost-control`.** Rebased onto v1.30.0's five-skill overnight-fleet-run release below, which landed first and already claimed 1.30.0 and 104 skills; this entry's numbers are re-derived against that, not carried over from the version this skill was originally drafted at. Written up from a real

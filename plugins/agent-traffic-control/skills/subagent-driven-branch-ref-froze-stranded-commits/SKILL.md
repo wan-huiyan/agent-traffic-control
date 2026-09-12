@@ -64,7 +64,7 @@ but did not reach origin, did not reach the PR, did not reach the merge.
 
 Strong signal **after** the merge:
 
-1. `gh pr view <N>` body claims a file count (e.g. "55 files changed") that
+1. `gh pr view <N>` body claims a file count (synthetic example: "24 files changed") that
    doesn't match the actual squash-commit file count
    (`git diff-tree --no-commit-id --name-only -r <merge-sha> | wc -l`).
 2. A test that passed locally during the session now fails on main because a
@@ -132,16 +132,19 @@ git -C <worktree-path> rev-parse HEAD                   # the "true" tip
 git -C <worktree-path> rev-parse <branch>               # the frozen ref
 # If these differ, you have stranded commits.
 
-# 1. List exactly which commits are stranded (in topological order).
-git -C <worktree-path> log <branch>..HEAD --oneline
+# 1. Inspect the stranded commits oldest first; record their full SHAs.
+git -C <worktree-path> log --reverse --topo-order --format="%H %s" <branch>..HEAD
 
 # 2. Branch a recovery branch from current origin/main.
 git fetch origin
 git checkout -B recover/<short-name> origin/main
 
-# 3. Cherry-pick the stranded commits in order.
-git cherry-pick <oldest-stranded-sha>..<newest-stranded-sha>
-# (or list them individually if the range is non-linear)
+# 3. Cherry-pick every verified missing commit explicitly, oldest first.
+# Synthetic three-commit example; replace with your complete reviewed SHA list:
+git cherry-pick <first-verified-sha> <second-verified-sha> <third-verified-sha>
+# Do not use oldest..newest: that range EXCLUDES oldest.
+# Inspect merge commits separately: cherry-picking one requires choosing its
+# mainline parent, and replaying it plus commits it already contains can duplicate changes.
 
 # 4. If the cherry-picks reference paths that have moved on main since
 #    the original work was authored (common when other PRs landed
@@ -192,67 +195,34 @@ After the recovery PR lands:
 - The original symptom (e.g. `sql_path missing`, `ModuleNotFoundError`) is
   gone.
 
-## Example
+## Synthetic example
 
-the-handover-repo project, session 6 (2026-05-18). Plan B's 18 TDD tasks executed
-via `superpowers:subagent-driven-development` in a worktree at
-`.claude/worktrees/plan-b-brief-runner` on branch
-`worktree-plan-b-brief-runner`.
+A pipeline runs several implementation tasks in an isolated worktree on
+`feature/export-worker`. Each task reports a commit, and local tests pass.
+After a detached-HEAD transition, later commits advance `HEAD` but leave the
+named branch behind. The agent pushes `feature/export-worker` and merges the PR.
+The remote receives only the commits reachable from that branch ref.
 
-Each implementer subagent reported DONE with a commit SHA. The controlling
-session's per-task reviewers ran `pytest` from inside the worktree and saw
-all green. At the end, the controlling session ran:
+The PR description claims 24 changed files, while the actual PR diff lists 16.
+A fresh checkout of main then fails because a referenced handler is absent.
 
-```bash
-git push -u origin worktree-plan-b-brief-runner
-gh pr create --title "feat(plan-b): brief-runner core backend" ...
-# CI green; squash-merge.
+Illustrative ref state; these are symbolic labels, not real commit hashes:
+
+```text
+HEAD                         -> FINAL_TASK_COMMIT
+feature/export-worker        -> EARLIER_TASK_COMMIT
+origin/feature/export-worker -> EARLIER_TASK_COMMIT
 ```
 
-PR [#9](https://github.com/wan-huiyan/the-handover-repo/pull/9) merged at
-`d84ceee7032f73a60dc0bb2af57939aa3f987625`. The PR body claimed "55 files
-changed, 2,295 insertions" — but the merge commit's file list had only 42.
+`git log feature/export-worker..HEAD --oneline` shows the missing task commits.
+`git reflog show feature/export-worker` stops at the earlier task. The commits
+survive, but the pushed ref never included them.
 
-Diagnosis post-merge:
-
-```
-$ git rev-parse HEAD                                    # in worktree
-b31d37349c8a1316883014d50108f90eb52f93f8     # Task 18 ✓
-
-$ git rev-parse worktree-plan-b-brief-runner        # in worktree
-e9bb471acdac9d14c2114097f3230e00a11bc493     # Task 11 ← FROZEN
-
-$ git reflog show worktree-plan-b-brief-runner | head -3
-e9bb471 worktree-plan-b-brief-runner@{0}: commit: feat(brief-runner): CUSTOM_PARAMETER ...
-2dbed0e worktree-plan-b-brief-runner@{1}: commit: feat(brief-runner): inline SQL parametrizer ...
-# No reflog entries for Tasks 12-18, but they exist as commits!
-```
-
-The seven commits between e9bb471 (Task 11) and b31d373 (Task 18) — sql_hash,
-Run Pack generator, all four route handlers, Dockerfile + cloudbuild +
-.gcloudignore + deploy runbook — were stranded.
-
-Recovery via [PR #14](https://github.com/wan-huiyan/the-handover-repo/pull/14)
-(squash `d808859`):
-
-```bash
-git checkout -B recover/s5-plan-b-stranded-commits origin/main
-git cherry-pick bc9748b 947315a 77ff3ce 0a66933 29ff572 5972d34 b31d373
-# All cherry-picks applied cleanly.
-
-# Then a follow-up commit to repoint analysis/SQL/*.registry.toml
-# sql_path values to analysis/SQL/handover/<file>.sql, because PR #11
-# had moved the SQL files under us during the original session.
-
-pytest -q                # 166 passed, 1 skipped
-git push -u origin recover/s5-plan-b-stranded-commits
-gh pr create ...
-gh pr merge --squash --delete-branch
-```
-
-Time from discovery to recovered-on-main: ~25 minutes. Full post-mortem with
-forensics in
-`docs/analysis/2026-05-18-pr-9-stranded-commits.md` of the the-handover-repo repo.
+Recovery starts from current `origin/main`, cherry-picks the missing commits in
+order, and repairs references to any paths moved by an intervening PR. Tests run
+against that combined tree before a recovery PR is proposed. The technical
+lesson is to compare HEAD, the local branch, and its fetched remote ref before
+publishing; a local test pass alone does not prove the remote has the same tree.
 
 ## Notes
 
@@ -286,18 +256,12 @@ forensics in
 - **Concurrent PRs amplify the damage.** If main moved while your worktree
   was open, the squash-merge silently reconciles your truncated tree
   against the new main — sometimes producing functioning but partial
-  output, sometimes producing broken-reference output. See the example
-  above where PR #11 moved SQL files under PR #9 while it was open;
-  both the strand AND the path drift bit at once.
+  output, sometimes producing broken-reference output. If an intervening PR
+  moves files referenced by stranded commits, recovery must address both the
+  missing commits and the path drift.
 
 ## References
 
-- the-handover-repo [PR #9](https://github.com/wan-huiyan/the-handover-repo/pull/9)
-  (the truncated original) and
-  [PR #14](https://github.com/wan-huiyan/the-handover-repo/pull/14)
-  (the cherry-pick recovery).
-- the-handover-repo post-mortem at `docs/analysis/2026-05-18-pr-9-stranded-commits.md`
-  (full forensic timeline + remediation recipe).
 - Sister skills:
   [`working-tree-edits-stranded-on-squash-merge`](../working-tree-edits-stranded-on-squash-merge/SKILL.md)
   (uncommitted Edit() — different mechanism),

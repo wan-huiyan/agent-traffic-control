@@ -5,7 +5,7 @@ description: |
   when the user explicitly hints that newer state (issues filed, PRs merged, probes
   shipped) has landed since the prompt was authored. Use when: (1) the user invokes
   "execute docs/handoffs/session_NNN_*.md" or "run this plan" or "implement this ADR"
-  AND adds an inline aside like "but please be aware of #642, #662, #663" / "watch out
+  AND adds an inline aside like "but please be aware of #A, #B, #C" / "watch out
   for PR #N" / "FYI #issue landed since this was written"; (2) before executing, a
   scan reveals issues/PRs in the user's hint list were filed/merged AFTER the prompt's
   authoring timestamp; (3) the newer artifacts could materially change what the prompt
@@ -102,11 +102,11 @@ Present the user with concrete options. Bias toward giving them a default that r
 the artifact's implications:
 
 ```
-question: "PR #656 ships A1 on a basis that #662 now flags as leakage-adjacent.
+question: "The planned PR uses inputs that a newer issue flags as invalid.
            How should I proceed with the merge?"
 options:
   - "Merge as-is + caveat"        (execute verbatim, surface divergence post-merge)
-  - "Edit basis before merge"     (re-scope per #662 path 1; merge after)
+  - "Edit basis before merge"     (re-scope per the newer issue; merge after)
   - "Hold PR, design pivot"       (don't merge today; resolve newer issue first)
   - "Narrative-only edit + merge" (smallest delta to address the newer state)
 ```
@@ -141,42 +141,25 @@ You did this right if:
 4. The user's aside ("be aware of #X") shows up as a load-bearing decision point in
    the session log, not a footnote.
 
-## Example: S164c PR #656 merge with #642/#662/#669 hints (the-project-repo)
+## Synthetic example: a handoff predates an input-quality correction
 
-**Trigger:** `docs/handoffs/session_164c_pr656_merge_prompt.md` authored 2026-05-09;
-user invoked "can you execute docs/handoffs/session_164c_pr656_merge_prompt.md? but
-please be aware of #642, #662, and #663" on 2026-05-10.
+A handoff asks the next session to merge a dashboard update. The user adds that
+an input-quality issue and a correction PR have appeared since the handoff.
 
-**Fetched state:**
-- `#642` (P1, ml-correctness) — CLOSED via PR #663 (MERGED). Probe 3b verdict:
-  `event_signup` IS leakage-adjacent (pre-conversion marginal lift −0.62pp).
-- `#662` (P1, ml-correctness) — OPEN. Surfaced wider finding: 6 of 7 events in A1's
-  basis show negative or near-zero pre-conversion marginal lift. Named 4 paths.
-- `#663` — MERGED docs/probe-3b artifact.
-- (Discovered by reading #662 body) `#669` — MERGED methodology correction: under
-  the binary-filter framing, 1 of 3 A1 events IS clean (task_item_complete), where
-  the earlier probe had called all 3 leakage-flavored. Separately, #662's path 1
-  widens from content_page_view alone to the 2-event set {content_page_view,
-  task_item_complete} — a REPLACEMENT basis, not two of the original three.
+The current issue identifies invalid inputs in the original metric definition.
+The correction establishes a replacement input set: it includes a valid input
+from the old set plus a newly admitted input. It is a replacement basis, not
+merely a subset of the old one. The dashboard's calculation and explanation must
+agree about that distinction.
 
-**Map:**
-- The prompt's plan: merge PR #656 as-is (3-event basis at 27.3%/n=1,149/~91 today).
-- Post-#669 implication: A1's 3-event basis includes 2 leakage-flavored events
-  (event_signup, todo_item_click). The prompt's plan would ship known-leakage to prod.
-- Options narrow to either: (a) accept the leakage with a caveat, (b) narrow the
-  basis to the 2 clean events of #662 path 1, (c) hold the PR, (d) narrative-only
-  edit.
+The agent reads the current issue and correction, then presents the concrete
+scope choices: retain the old definition with an explicit limitation, adopt the
+replacement definition, or hold the change pending a product decision. The user
+chooses the replacement. The agent updates both calculation and explanation,
+validates their agreement, and records which newer evidence changed the plan.
 
-**AskUserQuestion** with all 4 options + concrete trade-offs. User chose (b) "Edit
-basis to clean events."
-
-**Result:** PR #656 squash-merged at `cd8198de` with the narrowed 2-event basis
-(22.3%/n=448/~76 today), ADR 0028 amendment, analysis doc S164c section. Closes
-#498 + #662 in one merge. Auto-deployed to `the-dashboard-service-00077-b6b`.
-
-Had the prompt been executed verbatim, the narrative-vs-SQL drift class that issue
-#498 was originally opened to fix would have shipped a fresh instance — the dashboard's end users
-seeing wrong event chips on the A1 card.
+This example uses no real project, issue identifiers, measurements, or deployment
+history. Its lesson is the scope decision triggered by newer evidence.
 
 ## Notes
 
@@ -211,5 +194,6 @@ seeing wrong event chips on the A1 card.
 
 ## References
 
-- [Project incident — the-project-repo S164c, 2026-05-10](https://github.com/wan-huiyan/the-project-repo/pull/656): user said "execute docs/handoffs/session_164c_pr656_merge_prompt.md? but please be aware of #642, #662, and #663"; the AskUserQuestion gate caught a leakage-recreation that would have shipped to production otherwise.
-- [Sister project-feedback memory — feedback_brief_says_probe_dont_close_on_permission_block.md](file:///Users/<user>/.claude/projects/-Users-<user>-Documents-the-project-repo/memory/feedback_brief_says_probe_dont_close_on_permission_block.md) (narrower trigger: probe blocked by sandbox).
+- `feedback_brief_says_probe_dont_close_on_permission_block` — related principle
+  for a required probe blocked by the execution environment.
+- Project incident links and private memory paths are intentionally omitted.
