@@ -79,13 +79,13 @@ Isolate into a git worktree.
 - Your work (files + edits) is present in the worktree; tests pass there.
 - The shared directory's `git status` shows only the *other* session's files.
 
-## Example
+## Synthetic example
 
-Session A is on `team-1-iap-deploy` with an uncommitted `app/config.py` edit.
-The parallel session runs `git checkout team-1-web-app` in the shared `repo/`.
+Session A is on `feature/config-validation` with an uncommitted `app/config.py` edit.
+The parallel session runs `git checkout feature/settings-page` in the shared `repo/`.
 Session A's `app/config.py` edit vanishes; `git reflog` shows
-`checkout: moving from team-1-iap-deploy to team-1-web-app`. Recovery:
-`git worktree add ../iap-worktree team-1-iap-deploy`, copy the untracked new
+`checkout: moving from feature/config-validation to feature/settings-page`. Recovery:
+`git worktree add ../config-worktree feature/config-validation`, copy the untracked new
 files in, re-apply the lost `config.py` edit, `git checkout app/main.py` + `rm`
 the strays in `repo/`, then `EnterWorktree` and carry on — committing each task.
 

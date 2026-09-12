@@ -189,16 +189,16 @@ In a stack of PRs where each one adds tests and each one edits the same counted 
 - *Their side* is main plus everybody else's tests.
 - *The merged tree* is the base plus yours plus theirs — a third number nobody has measured.
 
-Measured across three PRs in one stack (the routing app, 2026-08-07):
+Synthetic example across a stack of changes:
 
-| PR | The rebase resolved the line to | What the merged tree actually collects |
+| Change | Value chosen during rebase | Final tree's measured count |
 |---|---|---|
-| #780 | 459 | **461** |
-| #807 | 461 | **476** |
-| #781 | 476 | **480** |
+| First | 100 | **103** |
+| Second | 103 | **111** |
+| Third | 111 | **115** |
 
-Three resolutions, three wrong — and each looked perfectly reasonable when it was made,
-because each side of the conflict was a real count of a real tree.
+Each chosen value described an earlier tree. None described the final combined
+tree. The counts illustrate the mechanism and are not historical measurements.
 
 ### Resolve to a placeholder, then measure once
 
@@ -223,10 +223,10 @@ wrong-but-reasonable count ships and then gets copied into the next document.
 `**PENDING-REMEASURE**` cannot ship quietly — it fails a grep, a reviewer's eye, and often
 the repo's own doc gate.
 
-**And "bigger is newer" is not a tiebreak, because the count can go DOWN.** A later PR in
-the same repo was rebased four times and the row went **530 → 559 → 516**, while the merged
-tree collected **517**. Tests get deleted, renamed, and moved between suites; monotonic
-growth is an assumption, not a property of the number.
+**And "bigger is newer" is not a tiebreak, because the count can go DOWN.**
+For example, a synthetic sequence might move from 90 to 96 and then to 84 after
+obsolete tests are removed. Tests get deleted, renamed, and moved between suites;
+monotonic growth is an assumption, not a property of the number.
 
 ## Notes
 
@@ -234,7 +234,7 @@ growth is an assumption, not a property of the number.
   (each only has one branch's source baked in). The correct output comes from running the
   generator on the merged source.
 - **Same-named artifact (add/add)** — two branches independently wrote the same output
-  filename (e.g., `session_114_prompt.md`, `CHANGELOG.v2.md`) but for different purposes.
+  filename (e.g., `handoff_prompt.md`, `CHANGELOG.v2.md`) but for different purposes.
   These are NOT generated files — they're real content. Rename the later-discovered one
   rather than overwriting; both files represent distinct artifacts. Pre-detect with:
   `git ls-tree origin/main -- path/to/filename` before committing.

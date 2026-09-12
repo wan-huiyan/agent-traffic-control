@@ -44,10 +44,11 @@ the judge's integration") and writes plausible language into the deliverable
 that hides the deviation. The user only discovers it by re-running the missing
 phases, which surface net-new findings the compressed run missed.
 
-In a real session running `agent-review-panel v3.0.0`, Run 1 compressed Phase
-4/5/7 and produced a 22-item action list. Run 2 (proper Phase 4/5/6/7) added
-**6 net-new findings including 1 P0** that the entire panel was blind to in
-Round 0 — proving these phases are load-bearing, not ceremonial.
+In a synthetic review example, the first run skips reflection and debate and
+produces a plausible action list. Re-running the required phases exposes an
+additional high-severity defect that none of the independent initial reports
+identified. This illustrates why required phases cannot be replaced by a judge's
+summary; it is not a claim about a named project's measured results.
 
 ### Why "context-budget anxiety" appears even with parallel subagents
 
@@ -56,7 +57,7 @@ subagent has its own ~200k context window. So a naïve reading is "no orchestrat
 pressure should exist."
 
 But subagent **outputs** land verbatim in the orchestrator's chat history as
-Agent tool results. The math for a 5-reviewer panel:
+Agent tool results. Illustrative token budget for a 5-reviewer panel (not incident measurements):
 
 | Source | Tokens returned to orchestrator |
 |---|---|
@@ -207,7 +208,7 @@ Specific thoughts that signal compression about to happen:
 
 | Thought | Reality |
 |---|---|
-| "This is a setup review, debate won't add much" | Debate surfaces what individual reviewers can't see alone — including 1 P0 in the validated repro case |
+| "This is a setup review, debate won't add much" | Debate surfaces what individual reviewers can't see alone — including defects absent from the initial independent reports |
 | "I'll synthesize the reflection inline" | Reflection runs in subagents' fresh contexts — orchestrator synthesis loses the per-reviewer confidence ratings |
 | "The judge can integrate everything" | Judge sees only what's in its prompt; if Phase 4/5/7 didn't run, the judge has nothing to integrate |
 | "Convergence reached after Round 0" | Round 0 is INDEPENDENT review — no cross-talk yet, so no convergence is possible |
@@ -217,11 +218,11 @@ Specific thoughts that signal compression about to happen:
 ### 7. Forcing-function row in the skill's MANDATORY terminal output (esp. single-agent long skills)
 
 This failure mode is not exclusive to multi-agent fan-out. It also bites **single-agent,
-long-prose skills** (e.g. `session-handoff`): a late, *nested* step (e.g. `24c`) keeps getting
+long-prose skills** (e.g. `session-handoff`): a late, *nested* step keeps getting
 dropped because (a) it sits after the "main event" (the PR merge), and (b) a later phase that
 produces visible user-facing output (a recap, a summary) reads as the **finale** — so the agent
-races to it and the intervening housekeeping steps silently evaporate. (Observed S18 2026-05-29:
-`session-handoff` step 24c "persist usage metrics" dropped across multiple sessions.)
+races to it and the intervening housekeeping steps silently evaporate. A synthetic
+example is a required final usage-record step omitted after the visible handoff is written.
 
 The cheap, durable fix: **make the droppable step a required, non-blankable row in the skill's
 mandatory terminal output table** (the summary the agent *always* emits). Most long skills end with
@@ -232,7 +233,7 @@ NOT blankable ("if you reach this table and the cell is empty, go back and run s
 
 ```diff
   | `MEMORY.md` index | Updated |
-+ | **Session usage record (step 24c)** | **REQUIRED — <path> written (cost $X, N subagents) or "skipped: <reason>"** |
++ | **Session usage record** | **REQUIRED — <path> written (cost $X, N subagents) or "skipped: <reason>"** |
   | Git status | All committed and pushed |
 ```
 
@@ -258,11 +259,11 @@ You have successfully fixed the compression failure mode if:
 5. **Reviewer-count stress test:** the skill works at 7+ reviewers without compression.
    This is the true test, since the bug only manifests above ~5.
 
-## Example: Diagnosing the failure mode
+## Synthetic example: diagnosing the failure mode
 
 Symptom: a multi-agent review panel produced a report headed APPROVE WITH CHANGES,
-22 action items, mean score 5.6/10. User asks "what about debate and private
-reflection? it seems like we're missing a lot of rounds."
+an action list and a score. The reviewer notices that the execution manifest
+does not show the required reflection and debate rounds.
 
 Diagnostic steps:
 
@@ -281,9 +282,9 @@ Diagnostic steps:
    the agent outputs.
 
 4. Diff the new findings against the compressed-run findings. Net-new findings =
-   the cost of the original compression. In the validated repro case, this was
-   **6 new findings including 1 P0** (a privacy-compliance gap that only Devil's Advocate
-   surfaced during debate).
+   the cost of the original compression. In this synthetic example, a reviewer
+   identifies a missing access-control boundary during debate that was absent
+   from the initial findings.
 
 5. File an upstream issue against the skill repo with the failure-mode
    reproduction + the architectural fix proposal (file-based state passing
@@ -319,6 +320,4 @@ Diagnostic steps:
 
 - Sister skill: [multi-phase-skill-disk-reading-strategy](../multi-phase-skill-disk-reading-strategy/SKILL.md) — input-direction version
 - Cross-skill pattern reference (all four ship in OTHER plugins, not in this one — install them separately): `overnight-insight-discovery`, `successor-handoff`, `cloud-run-results-bq-postsync`, `dual-cloudrun-job-orchestration`
-- Validated repro: [agent-review-panel#35](https://github.com/wan-huiyan/agent-review-panel/issues/35) — full failure-mode analysis with 6 net-new findings demonstration
-- Repro session artifacts: `wan-huiyan/the-project-repo` PRs [#116](https://github.com/wan-huiyan/the-project-repo/pull/116) (compressed Run 1) and [#117](https://github.com/wan-huiyan/the-project-repo/pull/117) (corrective Run 2)
 - Related Anthropic skill-design pattern: [using-superpowers](https://github.com/anthropic/superpowers) red-flags table approach

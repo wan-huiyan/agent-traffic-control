@@ -2,13 +2,10 @@
 name: large-redesign-parallel-branch-collision-audit
 listing_tier: rich
 description: |
-  Before a large redesign, restructure or migration that will rewrite shared files — templates,
-  the base layout, central views, shared CSS — audit every unmerged branch for commits on those
-  same files. Use when the repo keeps long lived parallel branches (client variant, release,
-  staging, whitelabel) and the plan replaces files wholesale rather than restyling in place.
-  Symptom: the redesign merges cleanly, then cherry picking that branch's accessibility or hotfix
-  commits collides with the new markup. Run it before the plan is locked. Not for two pull
-  requests racing on one scope.
+  Before a redesign, restructure or migration replaces shared templates, layouts or views,
+  audit all unmerged branches, including client variants, releases and staging. Prevent clean
+  merges from stranding accessibility or hotfix work that later conflicts. Run before fixing
+  the plan. Not for two PRs racing on one scope or cosmetic restyling.
 author: Claude Code
 version: 1.0.0
 date: 2026-05-28

@@ -60,14 +60,14 @@ three-way merge, which preserves B/C/D.
 The thing that *looks* like this trap and is not: `git diff origin/main..HEAD`
 (**two** dots) compares tip to tip, so every file main gained after your branch
 point renders as a deletion your branch appears to be making. That is an
-artifact of the wrong command, not a pending revert. Verified: for one PR,
-GitHub reported 5 files / 219 insertions / 16 deletions and three-dot matched
-exactly, while two-dot reported 4 files / 13 insertions / 22 deletions — a
-different file list and deletions that did not exist. Full treatment:
+artifact of the wrong command, not a pending revert. In a synthetic example,
+main adds a new documentation file after a feature branch diverges. A two-dot
+diff reports that file as absent from the feature tip; a three-dot diff reports
+only the feature's own edits. Full treatment:
 `git-diff-2dot-vs-3dot-merge-safety`.
 
-Three-dot is not the lax option, either — a branch that genuinely deletes another
-session's 418-line file still shows `418 deletions` under three-dot. It reports
+Three-dot is not the lax option, either. In a synthetic example, deleting an
+80-line file shows `80 deletions` under three-dot. It reports
 real removals and drops invented ones.
 
 **So the question is never "am I behind?" It is "does my branch record a
@@ -146,16 +146,23 @@ Worth spelling out, because each of these individually reads as "you are fine":
 - `git merge origin/main` → **"Already up to date."**
 - No conflict, `mergeable: MERGEABLE`, CI green.
 
-Reproduced in a controlled repo: the ancestor gate exits 0, the behind-count is
-0, and the merge still deletes three files. Only
+In a synthetic repository example, the ancestor gate can exit 0 and the
+behind-count can be 0 while the commit still records three file deletions. Only
 `git diff --diff-filter=D --name-only origin/main...HEAD` reports them.
 
-## If one of these has already merged: splice, never revert
+## If one of these has already merged: inspect the recovery diff
 
-`git revert` on the offending squash commit re-deletes everything that has
-merged *since* — the same failure, aimed the other way. Recover each lost object
-individually from the last commit where it was intact and re-insert it into
-*current* main:
+`git revert` applies the inverse of the selected commit's changes to the current
+tree. It does not automatically remove all work merged afterward. A whole-commit
+revert may be appropriate if every change in that commit should be undone; it can
+also remove useful changes from that commit or conflict with later edits.
+
+Inspect the offending diff and subsequent edits before choosing recovery. If the
+commit mixes wanted changes with accidental losses, recover only the missing
+content into *current* main. Restore a whole file from its last-good version only
+when doing so preserves every wanted current edit; otherwise extract the missing
+hunks or ledger entries and apply them to the current version. Review and test
+the resulting diff before committing:
 
 ```sh
 git checkout <last-good-sha> -- <path>                    # files
@@ -171,8 +178,7 @@ id-presence check catches. Diff the field, not just the key.
 
 The natural check — and the one a broadcast asks for — enumerates *the things I
 created*. **The revert's scope is *the things I touched*, which is larger**, and
-the gap between them is where a clean-looking check goes wrong. Three ways it
-did, all in one session, each after an earlier check had reported clean:
+the gap between them is where a clean-looking check goes wrong. Three ways a check can miss the change:
 
 - **In-place edits to records you did not create.** Amending someone else's
   standing ruling, appending a "DONE" paragraph to a pre-existing task, editing
@@ -185,10 +191,10 @@ did, all in one session, each after an earlier check had reported clean:
   sentences later, quoted the range the settlement replaced. **A half-reverted
   record reads self-consistent** — worse than a clean revert, which at least
   looks obviously old.
-- **A moved number is indistinguishable from a reverted one by grep.** A README
-  count read 560 where the session had written 546; both a file-existence check
-  and a content-needle check flagged it lost, and it was not — sibling sessions
-  had added tests. **Re-derive the value; do not compare the string.** The
+- **A moved number is indistinguishable from a reverted one by grep.** In a
+  synthetic example, a README count rises from 136 to 140 after sibling sessions
+  add tests. A content-needle check for 136 falsely reports a loss even though
+  the new count is correct. **Re-derive the value; do not compare the string.** The
   needle check is right for prose and wrong for anything computed.
 
 The executable form is a needle per *claim*, not per file — one distinctive
@@ -200,8 +206,8 @@ once with different values of `REF`:
 ```sh
 REF=${REF:-origin/main}                       # override to check a BRANCH pre-merge
 f() { git show "$REF:$2" | grep -qF -- "$3" && echo "OK   $1" || echo "LOST $1"; }
-f "ruling: the amendment"  path/to/ledger.js  "AMENDED 2026-08-07 BY"
-f "caveat: pinned, not open" path/to/ledger.js "PINNED 2026-08-07 at"
+f "ruling: the amendment"  path/to/ledger.js  "AMENDED: approved revision"
+f "caveat: pinned, not open" path/to/ledger.js "PINNED: reviewed value"
 # ...and for anything computed, re-measure instead of grepping:
 test "$(pytest docs -q --co 2>&1 | tail -1 | awk '{print $1}')" = "$(grep -oE '[0-9]+ collected' README.md | head -1 | cut -d' ' -f1)"
 ```
@@ -216,15 +222,14 @@ written.
 line you took it from next to the check:
 
 ```sh
-git show <squash-sha> -- path/to/file.py | grep '^+' | grep -i shortlist
-# → +    shortlist_km = ...           ← THIS line is the needle
+git show <squash-sha> -- path/to/file.py | grep '^+' | grep -i batch
+# → +    batch_size = ...           ← THIS line is the needle
 ```
 
-The audit of PR #853 (the routing app, 2026-08-07, tracked under #863) grepped for
-`route_km_shortlist` — a
-symbol name recalled from the session that had written it. The real symbol was
-**`shortlist_km`**. The grep found nothing, and for a minute the session believed
-an entire merged PR had been deleted.
+Synthetic example: an audit searches for `selected_batch_size`, a symbol recalled
+from a previous conversation. The committed code uses `batch_size`. The search
+finds nothing and incorrectly reports the change as deleted. Reading the merged
+diff first would have supplied the real symbol.
 
 **The failure is two-sided, and only one side is intuitive:**
 
@@ -264,56 +269,29 @@ only files you meant to delete), and `git diff --stat origin/main...HEAD` lists
 only files you intended to change. The PR's "files changed" on GitHub matches
 that same list — it is computed the same way.
 
-## Example 1 — RETRACTED: this was the two-dot false alarm, not the trap
+## Synthetic example 1: the two-dot false alarm
 
-*Published in 1.0.0–1.2.0 as a worked case. It was not one. Corrected in 1.3.0;
-kept here because the artifact is common and worth recognising.*
+An older version of this guidance treated a two-dot diff as proof of a pending
+revert. That reasoning was incorrect. The correction remains part of this skill;
+the incident details are replaced here with a synthetic example.
 
-Branch `docs/s258-prompt-update` (this repo, S258, 2026-06-17) was cut before
-S257b's anomaly-alignment docs merged to main. `git diff --stat
-origin/main..HEAD` — **two dots** — showed 5 unrelated files being "deleted"
-(−384/−93/−65/−40/−19 lines: the anomaly HTML, a content snapshot, two S257b
-handoffs, a legend edit).
+Main gains `docs/setup.md` after `feature/help-text` diverges. The feature never
+contained or deleted that file. `git diff origin/main..HEAD` shows it missing,
+but `git diff origin/main...HEAD` does not record its deletion. A normal three-way
+merge preserves it. Merging main into the branch changes the two-dot display,
+not the underlying safety of that disjoint merge.
 
-**Nothing was ever at risk.** The branch never had those files and never
-recorded deleting them; three-dot would have reported no deletions and the
-three-way merge would have preserved every one of them. The original entry
-concluded *"a clean merge would have reverted all of S257b's work"* — **that
-claim was false**, and it is retracted. `git merge origin/main --no-edit` did
-run and was conflict-free, but what it fixed was the diff display, not a
-pending revert.
+## Synthetic example 2: a stale tree attached to a current parent
 
-The lesson that survives: a two-dot stat full of red on files you never touched
-is the *expected* output of the wrong command. Re-run it with three dots before
-you rebase, block, or escalate anything.
+An agent has an old index, moves the branch pointer to current main with
+`git reset --soft origin/main`, and commits. The new commit has current main as
+its parent but records removal of files and ledger edits absent from the old index.
+Ancestor checks pass; both two-dot and three-dot diffs show the real deletions.
 
-## Example 2 — REAL, and it cost four sessions (the routing app, 2026-08-07)
-
-PR #853 (`claude/floor500-rulings`, squash `6c79ff26`) shipped three ticked
-owner rulings **and deleted 11 files plus 15 hand-maintained ledger entries**
-belonging to four other sessions — 59 files, 5,081 deletions.
-
-**These deletions were genuine, not a two-dot artifact.** The branch's parent
-*was* main's tip, so the merge base was that same commit and the two-dot and
-three-dot diffs were identical — the 5,081 deletions are what GitHub merged.
-
-**Its parent was the newest commit on main.** `git log` showed it directly on
-top; nothing was behind. The tree, however, was ~8 hours old: the branch tip
-differed from its own parent by **59** files but from an 8-hour-old commit by
-only **39**. Everything merged in that window was recorded as a deletion.
-
-**Nothing gated it.** The PR was **created at 09:30:12Z and merged at
-09:30:23Z — eleven seconds** — so no reviewer and no CI run ever saw the diff.
-
-**It was found 3½ hours later, by accident**, during an unrelated wrap-up check
-that happened to re-read the ledger. Two follow-up PRs restored some casualties;
-one session's four files and six ledger entries were still missing hours after
-that, because that session had already finished and nobody was coming back.
-
-**The two habits that would have caught it**, in order of cost: run
-`git diff --diff-filter=D` before merging, and — in a solo repo where no human
-reviews — re-verify your own merged work still exists on main *after* the last
-sibling merge, not at the moment you write the ledger entry.
+A pre-merge deletion review catches this. If it has already merged, recovery
+must inspect both files and edited fields, reconcile them against current main,
+and check each affected owner's changes. Checking only newly created file names
+would miss amendments to existing ledger entries.
 
 ## Notes
 - The tell is **deletions under a THREE-dot diff**, not a conflict marker —
@@ -335,8 +313,7 @@ sibling merge, not at the moment you write the ledger entry.
   shows. Versions 1.0.0–1.2.0 of this skill contradicted it without citing it.
 - `worktree-stale-local-main-ref-inflates-pr-diff` — the other direction: a
   correct three-dot diff still over-reports when the LOCAL `main` ref is stale,
-  because the merge base is taken against an ancient ref (one case: 92 files /
-  8,381 insertions for a 6-file commit). Fetch first; name `origin/main`, not
+  because the merge base is taken against an ancient ref. Fetch first; name `origin/main`, not
   `main`. Its `merge-base --is-ancestor` check is necessary but not sufficient —
   the stale-tree variant above satisfies it and still deletes files.
 - `stale-base-pr-silently-reverts-upstream-content` — the line-level sibling

@@ -48,7 +48,7 @@ test file exists, the todos it created for itself are all still `pending`.
 
 ## Solution
 1. **Reconcile claimed-vs-actual before integrating.** For each agent: `git status --short`
-   and grep its target for the expected change (e.g. `grep -n generateChineseText route.ts`).
+   and grep its target for the expected change (e.g. `grep -n buildResponse handler.ts`).
    A missing edit + no new test file = the agent died; "completed (exit 0)" was the harness
    reporting the shell wrapper exited, NOT the work landing.
 2. **Don't try to revive a dead foreground agent — finish its task yourself.** Unlike a
@@ -89,8 +89,8 @@ work. A targeted mini-workflow covering only the gap is correct.
 **The 3-strike escalation rule.** If the *same stage* dies three times, stop re-dispatching and do
 it in the main loop in small, individually-verified steps. Three failures on one stage is evidence
 the stage is too large for one agent context (oversized payload, long tool chains, big file
-rewrites), and a fourth dispatch will fail the same way. In S360 this is exactly how the drift
-corrections finally landed after three agent deaths on that stage.
+rewrites), and a fourth dispatch will fail the same way. Breaking the stage into individually verified steps can recover progress
+without repeating the same oversized dispatch.
 
 **Design implication — pick the guardrail that matches the work.** Neither pattern is universally
 right:
@@ -117,8 +117,7 @@ read-and-reason cost. The recovery is different and nearly free:
 
 1. **Read the failure notification's `<result>` before deciding anything.** A mid-stream
    stall often lands AFTER the analysis is done and BEFORE the write-up — the partial result
-   in the notification can already contain real, load-bearing findings (verified 2026-07-23:
-   a design-gate reviewer's stall message carried three corrections that shaped the fix).
+   in the notification can already contain findings that matter to the result.
 2. **SendMessage the SAME agent id** — it resumes from its full transcript — with a
    finalize-only prompt: "Your run stalled mid-stream. FINALIZE now from what you already
    have — do NOT consult any advisor, spawn subagents, or re-read files; write the findings
@@ -129,25 +128,22 @@ read-and-reason cost. The recovery is different and nearly free:
    on X, Y, Z from your interrupted notes") so nothing silently drops between the partial
    and the final.
 
-Verified 2026-07-23 (the routing app rung-8 design gate): one resume turn recovered the complete
-structured review — including items only hinted at in the partial — at a fraction of the
-original agent's cost, with zero re-reading. Distinct from `resumeFromRunId` (workflow-level,
-re-runs downstream — still never that); this is the agent-transcript resume, which is safe.
+Synthetic example: a reviewer finishes its analysis but stalls while writing
+its final report. A finalize-only message to the same resumable agent asks it to
+write from its existing notes. This recovers the deliverable without repeating
+its reading. This is distinct from `resumeFromRunId`, a workflow-level operation
+that can repeat downstream work.
 
-**Sub-variant — killed by a SESSION/CREDIT LIMIT, resumed after the reset (verified
-2026-07-23, the routing app rung-9 fable critique):** the same transcript-resume works when the
-kill cause is "You've hit your session limit" (agent terminated on a terminal API error),
-even HOURS later after the limit resets, and even when the agent had NOT yet produced its
-deliverable — it had only finished its reading (33 tool uses) and died right before its
-compute step. The resume prompt then says CONTINUE, not just finalize: "you were cut off
-right before writing your recompute script — write it now, run it, report in the mandated
-format; do not re-read artifacts you already read, no subagents, no advisor." Result: the
-complete adversarial report in 2 tool uses / ~2.5 min, versus re-paying the entire
-read-phase on a fresh dispatch. Two extra rules for the limit case: (a) if the world moved
-during the outage (e.g. a merge landed on the branch), state the delta in the resume
-message and mark which changes are expected-context vs findings; (b) the failure message's
-"PARTIAL output recovered" preamble tells you how far it got — calibrate the resume verb
-(finalize vs continue) to that.
+**Sub-variant — interrupted by a session or credit limit:** if the platform retains
+the agent transcript, it may be possible to resume after the limit resets. Inspect
+the partial result first. Use "finalize" when analysis is complete and "continue"
+when an identified computation or verification step remains. Specify the missing
+step and avoid unnecessary re-reading or additional delegation.
+
+If the branch or input artifacts changed during the interruption, state that delta
+in the resume message. Re-check affected conclusions against the changed inputs.
+Transcript recovery depends on platform support; when no resumable transcript
+exists, redispatch only the missing work from the recovered evidence.
 
 ## Notes
 - TRAP, surfaced reactively (`disable-model-invocation`): recall by grepping lessons/skills
