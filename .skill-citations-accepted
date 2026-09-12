@@ -153,3 +153,4 @@ version-fix-check-read-source-not-materialized-table                 # unpublish
 vite-hmr-transient-console-errors-verify-on-fresh-reload             # unpublished note; not in this repo's history nor any public repo (checked 2026-08-12)
 voltagent-reviewer-no-write-tool                                     # unpublished note; not in this repo's history nor any public repo (checked 2026-08-12)
 worktree-plan-b-brief-runner                                         # unpublished note; not in this repo's history nor any public repo (checked 2026-08-12)
+gpt-6-astra  # OpenAI model identifier in dated dispatch example; not a skill citation

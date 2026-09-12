@@ -1,9 +1,11 @@
 ---
 name: research-lane-coordinator
 listing_tier: short
-description: Coordinate independent research lanes, evidence review, PR-queue handoffs and tested workflow corrections. Use for multi-session research or retrospectives, not routine single-task edits.
+description: Coordinate research lanes, evidence and PR handoffs. Use for multi-session research; skip routine edits.
 ---
-# Research Lane Coordinator
+# Research Garden
+
+The stable invocation name remains `research-lane-coordinator` so existing links and task prompts keep working.
 
 Use this as a working aid, not a fixed ceremony. Scale coordination to the question; one agent is enough when work cannot profitably split. The user's goals and current repository instructions take precedence over examples and workflow preferences here.
 
@@ -12,6 +14,8 @@ Use this as a working aid, not a fixed ceremony. Scale coordination to the quest
 Read the owner's goals and latest handoff, then reconcile relevant current code, merged work, open PRs, active writers and saved experiments. Keep one progress record linking each original goal to its evidence, limitation, owner and next action. A side discovery must not erase an unfinished goal.
 
 For lane ownership, worker briefs and the boundary with a separate PR-queue coordinator, read [coordination](references/coordination.md). Use the project's existing queue and release procedure. Research acceptance, merged content and verified deployment are separate claims.
+
+For model choice, reasoning escalation, context reuse and fan-out cost, read [dispatch and effort](references/dispatch-and-effort.md). These are choices within the host and owner’s permissions, not a fixed model ladder.
 
 ## Explore different questions in parallel
 
@@ -29,7 +33,7 @@ Choose the next useful experiment, prepare a tested implementation for the queue
 
 ## Improve this workflow when experience warrants it
 
-After a material failure, owner correction, contradiction, surprising result or handoff that reveals a material gap, read [the correction loop](references/correction-loop.md). Capture evidence first; reproduce or qualify the proposed cause; compare a narrow change with the current procedure; retain, revise or retire the guidance based on outcomes. Do not add a permanent rule merely because a single run disappointed.
+After a material failure, owner correction, contradiction, surprising result or handoff that reveals a material gap, use [Learning Loop](../learning-loop/SKILL.md). Capture evidence first; reproduce or qualify the proposed cause; compare a narrow change with the current procedure; retain, revise or retire the guidance based on outcomes. Do not add a permanent rule merely because a single run disappointed.
 
 Routine handoffs need only a continuity checkpoint; no correction event is required when nothing material was learned. A user request to improve this workflow can itself authorize the relevant local correction; do not ask again when that scope is already clear. It does not authorize unrelated memory changes.
 

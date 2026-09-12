@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 108 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 109 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 108 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 108 skills
+# Install the plugin — one shot, gets all 109 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 108 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 109 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -206,7 +206,8 @@ Failure modes of the `Workflow` tool and multi-agent orchestration — schema/St
 
 | Skill | Role |
 |---|---|
-| [**research-lane-coordinator**](plugins/agent-traffic-control/skills/research-lane-coordinator/) | Lead independent research lanes, hand validated work to a separate PR queue, and test/revise/retire guidance through an evidence-based correction loop. |
+| [**Research Garden**](plugins/agent-traffic-control/skills/research-lane-coordinator/) | Coordinate independent investigations, compare evidence, and hand validated work to a separate PR queue. Includes an optional, bounded reasoning escalation; it does not require one model everywhere or grant new permissions. |
+| [**Learning Loop**](plugins/agent-traffic-control/skills/learning-loop/) | Turn an evidenced correction into a tested, narrow change across coding, research, design, or operations; retain guidance that survives regression checks and remove rules the evidence rejects. |
 | [**workflow-schema-agent-retry-cap-oversized-payload**](plugins/agent-traffic-control/skills/workflow-schema-agent-retry-cap-oversized-payload/) | A Workflow schema agent hits the retry cap on an oversized output — recover its work from the transcript instead of losing the whole run. |
 | [**workflow-schema-agents-empty-loop-under-ratelimit**](plugins/agent-traffic-control/skills/workflow-schema-agents-empty-loop-under-ratelimit/) | Schema agents empty-loop StructuredOutput under a rate-limit storm — detect and back off instead of burning the fan-out. |
 | [**workflow-standalone-schema-agent-crash-and-args-string**](plugins/agent-traffic-control/skills/workflow-standalone-schema-agent-crash-and-args-string/) | A standalone schema agent can crash the whole run; and `args` arrives as a JSON string — parse-guard it. |
@@ -227,15 +228,19 @@ Failure modes of the `Workflow` tool and multi-agent orchestration — schema/St
 - **Cross-team coordination across separate repos** (real merge-queue territory) — out of scope.
 
 
-## Research leadership and learning from corrections
+## Research Garden and Learning Loop
 
-Use `research-lane-coordinator` for a multi-session research programme. It separates research direction from PR-queue operations and includes an event-driven correction loop: capture evidence, check the cause, evaluate a narrow change, then retain or retire the guidance. Memory hygiene can audit its private correction records; it is optional, and no background automation or global-memory rewrite is installed.
+Use `Research Garden` (`research-lane-coordinator`) to coordinate investigations and evidence across independent lanes. It separates research direction from PR-queue operations and can escalate reasoning within a bounded budget when useful; no single model is mandatory, and the skill grants no new permissions beyond the current user authorization.
 
-Example: “Coordinate measurement, candidate-construction and evaluation lanes for this prototype. Keep their baselines comparable, preserve negative results, and hand only qualified changes to the queue coordinator.”
+Use `Learning Loop` after a Garden finding, or after any similarly evidenced correction. It checks the cause, makes one narrow change, tests the change against the relevant regression, then keeps the guidance if it holds or removes the bad rule if the evidence rejects it. The loop is generic across coding, research, design, and operations. Memory hygiene may audit its private correction records, but it is optional, and no background automation or global-memory rewrite is installed. Traffic control owns the parallel filesystem and PR safety layer, including release handoffs; Garden owns investigations and evidence, while Learning Loop owns the tested correction.
 
-For Codex, copy the `research-lane-coordinator` directory into the host's skills directory. Claude users receive it through the existing plugin installation. Keep project-specific queue policies and incident evidence outside the public skill.
+Examples: “Coordinate measurement, candidate-construction and evaluation lanes for this prototype. Keep their baselines comparable, preserve negative results, and hand only qualified changes to the queue coordinator.” “The latest evidence contradicts this rule. Isolate the cause, make the smallest correction, run the regression checks, and retire the rule if it does not hold.”
+
+For a direct Codex installation, install the `research-lane-coordinator`, `learning-loop`, and `fan-out-cost-control` directories together as siblings in the host's skills directory so their relative links resolve. The first two have Codex display metadata; the stable invocation names remain unchanged. Claude users receive them through the existing plugin installation. Keep project-specific queue policies and incident evidence outside the public skills.
 
 ## Version history
+
+- **v1.35.0** (2026-09-12) — Rename `research-lane-coordinator` for readers as **Research Garden** and add the live **Learning Loop** skill, with host-aware prelaunch and budget guidance. Garden coordinates investigations and evidence, with optional bounded reasoning escalation within current authorization; Learning Loop turns evidenced corrections into tested narrow changes and can remove rules the evidence rejects. Clarify that traffic control owns parallel filesystem/PR safety and release handoffs. Total: 109 skills (23 live, 86 reference-only) + 1 hook.
 
 - **v1.34.0** (2026-09-12) — Add research-lane coordination, a separate PR-queue handoff and an evidence-based correction loop with optional memory-hygiene integration. Sanitize eight legacy cases, preserve their corrected mechanisms, and fix two recovery examples. Generalized examples keep private project evidence out of the published workflow.
 
