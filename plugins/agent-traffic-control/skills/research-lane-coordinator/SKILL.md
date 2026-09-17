@@ -37,4 +37,6 @@ After a material failure, owner correction, contradiction, surprising result or 
 
 Routine handoffs need only a continuity checkpoint; no correction event is required when nothing material was learned. A user request to improve this workflow can itself authorize the relevant local correction; do not ask again when that scope is already clear. It does not authorize unrelated memory changes.
 
+When a measurement run ends, read the layer that failed before reporting it: a job can list as SUCCEEDED while the work inside it produced nothing, because a forked worker was killed for memory and the parent recorded the failure and exited 0. See [`job-reports-success-while-its-worker-was-oom-killed`](../job-reports-success-while-its-worker-was-oom-killed/SKILL.md) for the counters that make such a kill counted rather than inferred, and for why per-process peak figures cannot be summed.
+
 This is an event-driven loop within authorized work, not a background scheduler or permission to rewrite arbitrary memory. Local workflow edits can proceed within an explicit maintenance grant; publishing, changing owner policies or touching unrelated memory requires the applicable authority. For memory-hygiene compatibility, use [the integration notes](references/memory-hygiene.md).

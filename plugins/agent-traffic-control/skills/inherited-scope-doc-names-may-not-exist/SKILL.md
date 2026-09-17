@@ -270,6 +270,12 @@ the scope-doc paths, all 7 would have tapped out on first bq query.
   current truth.
 - **Archive the probe as a reproducible artefact.** Future sessions re-running the same
   dispatch can re-run the probe in 30 seconds to re-verify; don't re-invent it.
+- **Sister skill**: [`peer-cited-platform-limit-may-be-a-conflation`](../peer-cited-platform-limit-may-be-a-conflation/SKILL.md)
+  — the same shape where the inherited claim is a PLATFORM LIMIT a coordinator
+  states as fact ("the provider's ceiling forbids N workers"), and it is their own
+  conflation of two quantities that share a number in today's configuration.
+  Settled the same way: ask for the source while offering to adopt their wording
+  if it exists, or let the platform accept the configuration and answer it for you.
 - **Sister skill**: [`injected-claude-md-is-the-worktrees-copy-not-mains`](../injected-claude-md-is-the-worktrees-copy-not-mains/SKILL.md) — the same principle where the inherited artefact is the project's RULES rather than a scope doc. A session running in a long-lived worktree is handed that worktree's `CLAUDE.md` at start, so the house rules in context can be weeks retired, and there is no moment at which you chose to trust them. Verify with `git show origin/main:CLAUDE.md` before asserting what the file says.
 
 ## References
