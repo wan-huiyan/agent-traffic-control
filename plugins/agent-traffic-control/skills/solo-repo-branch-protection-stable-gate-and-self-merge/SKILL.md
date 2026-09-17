@@ -138,3 +138,4 @@ turn and buys nothing -- a user never types another skill's name. They belong
 here, where the model reads them once retrieval has already succeeded.
 
 - [`gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes`](../gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes/SKILL.md)
+- [`gh-pr-checks-exit-code-folds-a-by-design-red-wait-on-the-row`](../gh-pr-checks-exit-code-folds-a-by-design-red-wait-on-the-row/SKILL.md) — once the required check is an aggregation context, a repo that reds it on purpose (on a draft, say) makes `gh pr checks` exit non-zero on a healthy pull request, so a background waiter keyed on the exit status reports a failure that is not there
