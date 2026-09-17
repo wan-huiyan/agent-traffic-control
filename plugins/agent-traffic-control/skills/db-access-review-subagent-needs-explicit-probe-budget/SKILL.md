@@ -6,8 +6,8 @@ description: |
   it a tool call and time budget, plus the probes NOT to re-run. Also when it gives `API Error:
   The socket connection was closed unexpectedly`, or has run 30 minutes. Not its sources.
 author: Claude Code
-version: 1.0.1
-date: 2026-09-02
+version: 1.1.0
+date: 2026-09-17
 ---
 # A review subagent with live-DB access needs an explicit probe budget
 
@@ -94,4 +94,5 @@ with Read when one of these matches what you are looking at.
 - [`credit-stall-mid-orchestration-revive-collision`](../credit-stall-mid-orchestration-revive-collision/SKILL.md) — a billing/credit stall froze in-flight subagents and they collide when it resolves
 - [`fan-out-cost-control`](../fan-out-cost-control/SKILL.md) — a fan-out's token burn is invisible from the agent count: per-shard `advisor()` calls multiply by fan-out width, a resumed agent's cost tracks turn count not thinking depth, and write-once-at-end agents lose everything to a kill or a usage limit
 - [`scheduled-fallback-check-cites-stale-task-id`](../scheduled-fallback-check-cites-stale-task-id/SKILL.md) — a self-scheduled or peer check-in message names a background task ID that was current when the check was SCHEDULED but may already be superseded by a restart under a fresh ID by the time it FIRES
+- [`poll-loop-treats-an-unreadable-status-as-finished`](../poll-loop-treats-an-unreadable-status-as-finished/SKILL.md) — a watch loop on a long-running remote job pulls one field out of the status reply and treats any non-empty value as completion, so an error line or a reply that arrived after the machine slept reads as a terminal state and gets acted on
 - [`session-context-runs-out-mid-brief-measure-first-hand-back-early`](../session-context-runs-out-mid-brief-measure-first-hand-back-early/SKILL.md) — a dispatched session's context budget runs out before it finishes: measure the facts the brief calls unmeasured first, because only a written measurement outlives the session, and decline the next assignment before claiming anything
