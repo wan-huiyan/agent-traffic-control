@@ -270,6 +270,7 @@ the scope-doc paths, all 7 would have tapped out on first bq query.
   current truth.
 - **Archive the probe as a reproducible artefact.** Future sessions re-running the same
   dispatch can re-run the probe in 30 seconds to re-verify; don't re-invent it.
+- **Sister skill**: [`injected-claude-md-is-the-worktrees-copy-not-mains`](../injected-claude-md-is-the-worktrees-copy-not-mains/SKILL.md) — the same principle where the inherited artefact is the project's RULES rather than a scope doc. A session running in a long-lived worktree is handed that worktree's `CLAUDE.md` at start, so the house rules in context can be weeks retired, and there is no moment at which you chose to trust them. Verify with `git show origin/main:CLAUDE.md` before asserting what the file says.
 
 ## References
 
