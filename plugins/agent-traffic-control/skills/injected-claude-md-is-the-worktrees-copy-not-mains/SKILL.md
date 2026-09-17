@@ -14,10 +14,13 @@ description: |
   so the bug report points at the wrong artefact. A retired copy is often LONGER
   than the current file — superseded correction notes accumulate until a rewrite
   deletes them — so the stale version reads as the more complete one. The copy
-  carries no date and no banner; compaction re-injects the same stale bytes.
+  carries no date and no banner, and compaction RE-READS it from disk, so the
+  bytes can change mid-session in either direction. A session's age is therefore
+  not evidence about which copy it holds: only a marker sentence present in one
+  version and absent in the other settles it.
   Settle it with `git show <remote>/<default-branch>:CLAUDE.md` and cite that,
   never the text in context.
-version: 1.0.0
+version: 1.1.0
 date: 2026-09-17
 author: wan-huiyan
 disable-model-invocation: true
@@ -43,9 +46,19 @@ Two properties make it worse than an ordinary stale read:
    stand, deleting the archaeology. A session holding the pre-rewrite copy holds
    more text, more caveats and more history than the current file, so on any
    "which of these looks more complete?" instinct the stale one wins.
-2. **Compaction re-injects the same bytes.** A long session that compacts is
-   re-served the instruction files from the same checkout, so the copy is
-   refreshed from a stale source and looks re-verified.
+2. **Compaction re-reads the file FROM DISK, which cuts both ways.** A long
+   session that compacts is re-served the instruction files from its checkout as
+   they are at that moment. If nothing changed, the stale copy is refreshed from
+   a stale source and looks re-verified — the usual case. But if someone moved
+   that checkout meanwhile, the session is silently handed the CURRENT file, and
+   a second copy now sits in its context governing over the first.
+   **Amended 2026-09-17, measured in the same repository the day this skill
+   landed:** a session that started in a checkout detached two weeks back was
+   compacted after a peer brought that checkout up to the default branch, and the
+   re-read injected the 81,929-byte current file with a harness note saying it
+   replaced the earlier copy. So "this session started before the rewrite,
+   therefore it holds the retired text" does not follow, and neither does the
+   reverse — a session started after a rewrite can be pinned to an old checkout.
 
 The damage is not that you follow an out-of-date rule — that is usually benign,
 because retired rules are mostly stricter than current ones. The damage is when
@@ -153,6 +166,21 @@ A control that says STALE on a fresh checkout of the default branch is measuring
 something else — most likely you compared against a local `main` ref that is
 itself behind, rather than `origin/main` after a fetch.
 
+**To settle which copy YOUR CONTEXT holds — which is a different object from any
+file on disk — use a marker sentence rather than a byte count.** Pick a sentence
+that exists in the retired version and not in the current one (a superseded
+correction note is ideal, since a rewrite deletes those), and check both sides:
+
+```bash
+git show origin/main:CLAUDE.md | grep -c "THE CENSUS THAT USED TO BE HERE IS GONE"
+# 0 on the current file; the retired copy contains it. Then look for the same
+# sentence in the text you were injected, and for the current file's own opening
+# line. Whichever you find is the copy you are reasoning from.
+```
+
+A byte count cannot do this: you cannot `wc -c` your own context, and the file on
+disk may have moved since it was injected.
+
 ## Example
 
 *Worked example from a route-generation repository where several sessions run in
@@ -216,6 +244,27 @@ A cache directory named for a version is a label, not an identity.
   keeps long-lived worktrees, merging the default branch into them is cheap
   insurance; the alternative is that every session started there inherits the
   same retired rulebook.
+
+## Notes — amendment, 2026-09-17
+
+- **A sweep of instruction files on disk does not measure what any session
+  holds.** A coordinator measured `CLAUDE.md` in 255 worktrees and told several
+  peers they were "holding stale rules". Those are two different objects, and the
+  second was never read. Its own withdrawal names the gap: the sendable sentence
+  is *"worktree X on disk carries N bytes; what YOUR session holds I have not
+  read — a marker sentence settles it"*. A verdict about a peer's context needs
+  the peer to check a marker sentence, which costs them one command.
+- **Check WHICH tree the stale file is in before accepting a claim about yours.**
+  In the same exchange the stale copy was in a worktree named after the session
+  but last committed a fortnight earlier and not in use; both worktrees that
+  session was actually working in already carried the current file, because they
+  were created from commits made after the rewrite. A worktree named after a
+  session is not necessarily a worktree it uses.
+- **Do not fix this by merging the default branch into a pinned worktree.** A
+  research worktree detached at the exact commit a measurement's artefacts are
+  checksum-pinned from must not move: merging would change the code the
+  measurement ran on. Read the live file with `git show` instead; the worktree's
+  own copy does not need to be current for that.
 
 ## References
 
