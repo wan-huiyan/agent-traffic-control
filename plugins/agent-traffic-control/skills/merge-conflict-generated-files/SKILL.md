@@ -5,7 +5,7 @@ description: |
   The conflicting files are derived output from a generator: resolve their source, re-run it and
   stage the fresh result rather than hand merging the output.
 author: Claude Code
-version: 1.1.0
+version: 1.1.1
 date: 2026-04-30
 ---
 # Merge Conflict in Generated Output Files
@@ -266,3 +266,4 @@ with Read when one of these matches what you are looking at.
 - [`git-rebase-stalls-async-post-commit-hook`](../git-rebase-stalls-async-post-commit-hook/SKILL.md) — a multi-commit rebase stalls mid-replay in a repo with a background post-commit hook
 - [`git-add-u-after-async-post-commit-hook`](../git-add-u-after-async-post-commit-hook/SKILL.md) — `git add -u` plus `--amend` plus force-push rolls thousands of unrelated deletions into your commit
 - [`git-amend-hits-async-post-commit-hook-commit`](../git-amend-hits-async-post-commit-hook-commit/SKILL.md) — `git commit --amend` silently rewrote the hook's commit instead of yours
+- [`clean-merge-lands-line-guard-on-a-value-neither-branch-predicted`](../clean-merge-lands-line-guard-on-a-value-neither-branch-predicted/SKILL.md) — the no-conflict sibling: both branches re-aim the same line-number citation and the merged tree matches neither

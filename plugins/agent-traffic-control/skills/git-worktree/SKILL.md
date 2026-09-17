@@ -361,3 +361,4 @@ with Read when one of these matches what you are looking at.
 - [`verify-pytest-imports-worktree-not-primary-checkout`](../verify-pytest-imports-worktree-not-primary-checkout/SKILL.md) — an editable install makes `import <pkg>` resolve to the primary checkout, not your worktree
 - [`flask-debug-cross-worktree-edit-stale`](../flask-debug-cross-worktree-edit-stale/SKILL.md) — the dev server keeps serving the old template after you edited it in another worktree
 - [`async-doc-hook-autodocs-worktree-locks-branch-checkout`](../async-doc-hook-autodocs-worktree-locks-branch-checkout/SKILL.md) — `'<branch>' is already used by worktree at .../autodocs-<name>` from a background docs hook
+- [`parallel-gate-legs-killed-for-memory-count-cannot-see-ram`](../parallel-gate-legs-killed-for-memory-count-cannot-see-ram/SKILL.md) — a worktree does not isolate the machine: two sessions' test legs collide on memory while the heavy-leg count reads inside its limit
