@@ -10,7 +10,7 @@ description: |
   request's state instead. Salvages untracked files before `git worktree remove` discards them.
   Not for one branch that will not merge.
 author: Claude Code
-version: 1.0.0
+version: 1.1.0
 date: 2026-05-20
 ---
 # Safe Bulk Worktree & Branch Cleanup
@@ -137,6 +137,27 @@ stale. Every deleted SHA was recorded on a `salvage/worktree-cleanup-*` branch.
 - **`git branch -d` vs `-D`:** `-d` refuses branches it thinks are unmerged
   (i.e. all squash-merged ones). Use `-D` *after* you have independently
   verified safety via step 2/3 — never as a shortcut to skip verification.
+- **The cheapest independent verification is a TREE comparison, and it needs
+  no API call.** `-d`'s refusal is right about the graph and wrong about the
+  content: the squash commit is not a descendant of the branch, so the
+  ancestry test fails even though every byte landed. The tree settles it —
+
+  ```bash
+  git diff --quiet <branch head> <the squash commit on main>   # exit 0 = identical
+  ```
+
+  Exit 0 means the landed tree is byte-identical to the branch tip, which is
+  stronger than "the PR says merged": it proves *these* bytes are on `main`,
+  not that something with this branch's name was merged. Measured on one
+  branch, 2026-09-17: head `c0b54b49d` against squash commit `cbe5df614`,
+  identical, so `-D` was safe. Find the squash commit with
+  `gh pr view <n> --json mergeCommit` or by subject on `main`.
+- **Read the refusal, not the tail.** `git branch -d <branch> | tail -1` shows
+  only git's `hint: Disable this message with …` line — which is printed
+  *because* it refused, and which reads exactly like a successful run. Same
+  for any `2>&1 | tail -n` pipeline over a bulk delete: git's advice is the
+  last thing on the stream and the error is above it. Read the exit status, or
+  the whole output, and re-list the branches afterwards.
 - **zsh word-splitting trap:** if your shell is zsh (the Claude Code Bash tool
   often is), `for b in $LIST` does NOT split a space-separated string — it
   iterates once over the whole blob. Wrap loops over string lists in
@@ -163,3 +184,4 @@ with Read when one of these matches what you are looking at.
 - [`pr-hijack-via-stale-worktree-branch-ref`](../pr-hijack-via-stale-worktree-branch-ref/SKILL.md) — `git push -u origin <branch>` from a long-lived worktree overwrote another session's open PR
 - [`deploy-from-stale-worktree-silent-rollback`](../deploy-from-stale-worktree-silent-rollback/SKILL.md) — a deploy built from a stale worktree silently rolled back recently merged fixes in production
 - [`docs-branch-off-feature-branch-smuggles-code`](../docs-branch-off-feature-branch-smuggles-code/SKILL.md) — a docs-only follow-up PR ships the parent feature's code because the branch was cut from the wrong place
+- [`waiter-pgrep-matches-its-own-command-line`](../waiter-pgrep-matches-its-own-command-line/SKILL.md) — before removing a worktree you check whether its owning session is still alive, and a process search answers that question about itself
