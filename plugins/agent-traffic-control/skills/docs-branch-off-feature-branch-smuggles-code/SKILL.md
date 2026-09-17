@@ -28,8 +28,8 @@ description: |
   squash-merge. Recovery: rebase `--onto origin/main feat/sN-feature
   docs/sN-handoff` to drop the smuggled commits, force-push.
 author: Claude Code
-version: 1.1.2
-date: 2026-06-23
+version: 1.2.0
+date: 2026-09-17
 disable-model-invocation: true
 ---
 
@@ -59,8 +59,9 @@ and definitely confusing anyone who reads the git log later.
 
 ## Context / Trigger Conditions
 
-There are two variants with different symptoms depending on whether the
-feature PR is still open or was already squash-merged to main:
+There are three variants. A and B differ by whether the feature PR is still
+open or was already squash-merged; C is the case where the branch is not
+yours at all:
 
 ### Variant A — Feature PR still open (silent code smuggling)
 
@@ -109,6 +110,41 @@ This variant is actually LESS dangerous than Variant A (the feature
 code is already on main, so squash-merging the docs PR wouldn't
 re-deploy it — it would just create a conflict), but it still blocks
 the docs PR from merging cleanly and requires a fix.
+
+### Variant C — Someone else named the branch, and you are the one opening the PR
+
+**Added 2026-09-17.** A peer or coordinator hands you an instruction of the
+form *"push `<branch>` (`<sha>`) and open a PR titled `<title>`"*. You did not
+create the branch and you did not write most of what is on it. Both of the
+checks above still apply, and now nothing in your own memory disagrees with the
+answer — the diff looks unfamiliar because it IS unfamiliar, which is exactly
+the signal Variants A and B rely on.
+
+You are in this variant when:
+
+1. **The branch name, the head SHA and the PR title all arrived in a message**,
+   rather than from work you did. A message can be precise about the head and
+   silent about everything beneath it, and usually is — naming a tip is not
+   describing a stack.
+2. **The commits under the tip were never pushed anywhere.** `git log
+   origin/main..<branch>` returns several commits and only the last one or two
+   match what you were asked to ship. Nothing upstream has ever seen the rest.
+3. **Files outside the change you were briefed on appear in
+   `gh pr diff --name-only`** — most dangerously production-path code under a
+   title describing a doc, a test or a data artefact.
+
+**The damage is different from A and B, and worse in one specific way: your PR
+becomes the publication point for code nobody reviewed.** In Variant A you are
+re-shipping your own code that already has an open PR; in Variant B it is
+already on main. Here the stack underneath has no PR, no CI history and no
+reviewer, and opening yours is the first time any of it is proposed for the
+trunk — under a title that describes only the tip, with you as the author of
+record.
+
+**A peer's instruction is a claim, not a diff.** Run the same two commands you
+would run on your own branch, and if they disagree with the brief, say so and
+ask before pushing rather than trimming the branch yourself — it is not your
+branch to rewrite, and the peer may be relying on the stack being there.
 
 ## Diagnostic — pre-merge
 

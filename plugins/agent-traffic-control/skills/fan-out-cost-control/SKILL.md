@@ -2,8 +2,8 @@
 name: fan-out-cost-control
 description: Control agent fan-out cost through deliberate model selection, bounded context, useful checkpoints and limits on nested consultations.
 author: Claude Code
-version: 1.2.0
-date: 2026-09-12
+version: 1.3.0
+date: 2026-09-17
 disable-model-invocation: true
 ---
 # Fan-Out Cost Control
@@ -38,6 +38,10 @@ For long or interruptible jobs, ask workers to save independently usable results
 
 Checkpointing is easiest to arrange before launch. If a running job needs it, weigh a safe checkpoint against the interruption cost rather than assuming the instruction always arrives too late. Short atomic tasks may need no extra checkpoint machinery.
 
+A hard stop limit belongs to this section too: a job timeout, a wall-clock ceiling, a watchdog kill. Size it from the work's own declared budgets and its real concurrency, not from an estimate of how long the work ought to take. Where a unit runs several internal stages in sequence, each holding a budget of its own, the unit's floor is their sum; a limit set below that sum kills the unit at the same point on every attempt, which reads as a flaky job rather than as a limit chosen too tight. Check whether the runner applies the limit per task or per unit, and whether a retry inherits it.
+
+When a limit fires, the task ends where it stands. Whatever was held only in memory or on a local scratch path goes with it, and only what was already written to durable storage survives — so a limit set below the work's floor converts completed work into a charge with no output. Changing that limit is usually a change to the job definition rather than to a running task, so read the definition back after the change and compare it to what you intended, and confirm nothing else in the definition moved with it.
+
 ## Stop based on authority and remaining value
 
 Honor an explicit stop or budget limit. When choosing whether to continue within authorization, inspect saved progress and remaining cost. Sunk cost is not a reason to spend through a limit. Cancellation and rate-limit recovery differ by host; neither guarantees retained transcripts or lost outputs. Save what can be saved safely, and record the real continuation state.
@@ -50,6 +54,7 @@ Observe meaningful progress, tool failures and deadlines. In row-producing work,
 - Check the expected evidence was saved and that incomplete workers are not reported as clean reviewers.
 - Compare total cost and completion quality, including retries and integration. Parallelism can reduce elapsed time without reducing tokens.
 - Preserve the limiting evidence if the run stopped. Do not turn a bounded search into a claim that no solution exists.
+- A run that was stopped still costs whatever it consumed before stopping. Price a cancellation as spend, and do not read a missing completion time as evidence that the work never ran: a record with no completion timestamp is as consistent with a task that was killed late as with one that never started. `poll-loop-treats-an-unreadable-status-as-finished` covers the reader-side half of that, where an unparseable status is taken for a terminal one.
 
 For difficult research reasoning, read [Research Garden's dispatch guidance](../research-lane-coordinator/references/dispatch-and-effort.md). For a demonstrated workflow failure, use [Learning Loop](../learning-loop/SKILL.md) to test a narrow correction rather than imposing a permanent model or agent-count rule.
 
