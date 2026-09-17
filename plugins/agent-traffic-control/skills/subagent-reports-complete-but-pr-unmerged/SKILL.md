@@ -153,3 +153,23 @@ Without the verify-then-finish discipline, only #540 would have actually closed 
 - Sister skill: `superpowers:subagent-driven-development` (workflow primer for sub-agent dispatch).
 - Sister skill: `subagent-pre-existing-misattribution` (different gap class — wrong baseline classification, not premature completion).
 - Sister skill: `subagent-bash-cd-wrong-worktree` (different gap class — wrong cwd).
+
+## The same claim in the other direction: "not landed" when it merged hours ago
+
+A session's status claim about its own pull request goes stale the same way, and
+the direction that escapes checking is the reassuring one. Asked a CAPACITY
+question by a coordinator — nothing to do with that PR — a session answered "it
+is still waiting to land" and was reserving budget for it; the PR had merged
+**seven hours earlier**. The subject of the sentence (how much context was left)
+had been measured; the status clause rode along as a PREMISE and was copied from
+the session's own previous message, which is a copy like any other.
+
+**Before any answer that mentions a PR, branch or deploy state in passing,
+re-read it** — not only before answers that are about it:
+
+```bash
+gh pr view <n> --json state,mergedAt,mergeCommit
+```
+
+The peer caught that one by reading the API itself, which is the only reason it
+cost nothing.
