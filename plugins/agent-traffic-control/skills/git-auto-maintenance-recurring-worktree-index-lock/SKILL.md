@@ -17,7 +17,7 @@ description: |
   `git-rebase-stalls-async-post-commit-hook`), nor "branch checked out elsewhere" merge errors.
 disable-model-invocation: true
 author: Claude Code
-version: 1.1.0
+version: 1.2.0
 date: 2026-06-23
 ---
 
@@ -55,6 +55,16 @@ git maintaining itself on your behalf.
    ls -la --time-style=full-iso "$LOCK"            # mtime minutes old => not an active commit
    pgrep -fl "git (commit|add|write-tree|gc|maintenance|repack|pack-objects)" | grep -v pgrep
    ```
+   **`| grep -v pgrep` is not enough on a machine several sessions share.** It drops the
+   `pgrep` process; it does not drop the WRAPPER SHELL that carries the pattern, because the
+   Bash tool runs every command inside a `/bin/zsh -c '<whole command text>'`. So this line
+   can report git work in progress when the only thing it found was itself, or a peer session
+   that merely typed the same words — read each hit's argv and discard any beginning
+   `/bin/zsh -c`. `waiter-pgrep-matches-its-own-command-line` has the full trap and the
+   ownership checks (`lsof -a -p <pid> -d cwd -Fn`) that settle whose process it is.
+   `lsof "$LOCK"` is the load-bearing forensic here and cannot self-match; weight it over
+   the process search.
+
    **Unheld (lsof empty) + 0-byte + minutes-old = textbook stale → safe `rm -f "$LOCK"`** (git's
    own error literally says "remove the file manually to continue"). Re-check `lsof`/size
    immediately before the `rm`, then stage-by-explicit-path + commit at once to minimise the
