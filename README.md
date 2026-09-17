@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 109 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 110 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 109 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 109 skills
+# Install the plugin — one shot, gets all 110 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 109 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 110 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -174,6 +174,7 @@ Subagents introduce their own coordination failure modes. These cover misattribu
 | [**orchestrator-rule-too-strict-stalls-agent-silently**](plugins/agent-traffic-control/skills/orchestrator-rule-too-strict-stalls-agent-silently/) | A guard you wrote is scoped so wide its precondition never holds, so the agent waits correctly and ships nothing — no error, no red check, and a status that reads as work in progress. Scope guards to the object, not to global quiet, and ask each stalled agent whether one of YOUR rules is blocking it. |
 | [**agent-refusal-with-evidence-beats-literal-compliance**](plugins/agent-traffic-control/skills/agent-refusal-with-evidence-beats-literal-compliance/) | Authorise an agent to refuse the letter of an instruction while meeting its intent — and require the measurement with the refusal, because evidence is the whole difference between a refusal you can bank and one you have to re-litigate. |
 | [**fan-out-cost-control**](plugins/agent-traffic-control/skills/fan-out-cost-control/) | A fan-out's token burn is invisible from the agent count: per-shard `advisor()`/second-opinion calls multiply by fan-out width, a resumed agent's cost tracks turn count not thinking depth, and write-once-at-end agents lose everything to a kill or usage limit that an incrementally-writing agent would have survived. |
+| [**scheduled-fallback-check-cites-stale-task-id**](plugins/agent-traffic-control/skills/scheduled-fallback-check-cites-stale-task-id/) | A self-scheduled or peer check-in message names a background task ID that was current when the check was scheduled but may already be superseded by a restart under a fresh ID by the time it fires — verify what's actually running before acting on the message's instructions. |
 
 ### E. Squash/merge mechanics — *the gotchas at PR-land time*
 
