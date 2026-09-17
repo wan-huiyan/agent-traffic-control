@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 111 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 112 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 111 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 111 skills
+# Install the plugin — one shot, gets all 112 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 111 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 112 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -121,6 +121,7 @@ The cheap-isolation primitive (`git worktree`) has surprising failure modes when
 | [**verify-pytest-imports-worktree-not-primary-checkout**](plugins/agent-traffic-control/skills/verify-pytest-imports-worktree-not-primary-checkout/) | Running pytest from a worktree with an editable install (`pip install -e .`) made from the primary checkout imports the PRIMARY source, not your worktree's. |
 | [**worktree-does-not-isolate-shared-installed-artefacts**](plugins/agent-traffic-control/skills/worktree-does-not-isolate-shared-installed-artefacts/) | A worktree isolates the SOURCE TREE only — a simulator install keyed by bundle id, DerivedData keyed by project path or a tool cache keyed by version string is shared by every worktree, so a run can exercise ANOTHER worktree's artefact and say nothing. |
 | [**prove-test-failures-pre-existing-via-clean-worktree**](plugins/agent-traffic-control/skills/prove-test-failures-pre-existing-via-clean-worktree/) | Before panic-debugging (or waving off) test failures in files your diff never touched, prove they're pre-existing by replaying against a clean worktree. |
+| [**injected-claude-md-is-the-worktrees-copy-not-mains**](plugins/agent-traffic-control/skills/injected-claude-md-is-the-worktrees-copy-not-mains/) | The instruction file in your context is the copy in the checkout the session STARTED in — a long-lived worktree's can be weeks behind, so every house rule you quote may be retired. The failure inverts: the file on the default branch is usually right and your injected copy is the stale thing, so the bug report points at the wrong artefact. A retired copy is often LONGER (correction notes accumulate until a rewrite deletes them), and compaction re-injects the same bytes. Settle it with `git show origin/main:CLAUDE.md`. |
 
 ### C. Parallel-PR conflict recovery — *after collision*
 
@@ -241,6 +242,8 @@ Examples: “Coordinate measurement, candidate-construction and evaluation lanes
 For a direct Codex installation, install the `research-lane-coordinator`, `learning-loop`, and `fan-out-cost-control` directories together as siblings in the host's skills directory so their relative links resolve. The first two have Codex display metadata; the stable invocation names remain unchanged. Claude users receive them through the existing plugin installation. Keep project-specific queue policies and incident evidence outside the public skills.
 
 ## Version history
+
+- **v1.37.0** (2026-09-17) — **New skill: `injected-claude-md-is-the-worktrees-copy-not-mains`.** Claude Code injects the project instruction file from the checkout the session STARTED in, so a session running in a long-lived worktree is handed that worktree's `CLAUDE.md` — which can be weeks behind the default branch — with no date, no banner and nothing that looks old. **The damage is not following a retired rule** (retired rules are mostly stricter); it is CLAIMING something about the file. The direction inverts: the live file is usually right and already says the thing you are about to "discover", so the issue, the correction and the peer message all point at the wrong artefact, persuasively, because you quoted the file. **Measured 2026-09-17** in the repository this came from: the session's checkout held a **238,232-byte** `CLAUDE.md` against **81,929 bytes** on the default branch, which had been rewritten two days earlier to the rules as they now stand. The stale copy was nearly **three times the size** — an instruction file accumulates correction notes until a rewrite deletes them, so **the retired version reads as the more complete one** and every instinct about completeness points the wrong way. A SessionStart hook had printed the warning with both byte counts at the top of that session and it was skimmed; detection existing is not detection working. **The same class, same day, one layer up**: a duplicate check for this very release was first run against the installed plugin cache, which held **99 skills at v1.29.0** while the source tree held **111 at v1.36.1** — twelve newer, committed twenty minutes earlier — and re-running it against the source retired one of the two candidate lessons as already covered. A cache directory named for a version is a label, not an identity. **Shipped reference-only**, so the shared skill listing is unchanged; reachable from `inherited-scope-doc-names-may-not-exist`, which is the same principle for an inherited plan doc and now names this as the case where the inherited artefact is the RULES themselves, injected with no moment at which you chose to trust them. Total: 112 skills (23 live, 89 reference-only) + 1 hook.
 
 - **v1.36.1** (2026-09-17) — **The front-page count said 110 and the tree held 111, because two pull requests each bumped the same counter by one from the same base.** #58 (a new skill in bucket D) and #59 (v1.36.0 below) were both cut when the tree had 109, both correctly wrote 110, and both were green: a `pull_request` run tests the merge preview as it stood when the run fired, and #59's fired before #58 landed. Nothing in either diff overlapped — #58 touched no file #59 touched except the README's three count lines, which is exactly the shape a conflict would have caught had they been the same line, and they were not. The tell is that the count is **derived** (the gate recomputes it from the skill directories) while the claim is **hand-written**: a derived-versus-declared pair cannot be kept honest by a check that runs before the last member lands. So the merge run on `main` went red, correctly, and is what caught it — the first useful thing the push-side gate has caught here. Fixed by counting: **111 skills, 23 live, 88 reference-only**, measured rather than incremented. **v1.36.0's own entry is left as written** — its "Total: 110" was true of the tree that branch held, and rewriting it would hide the collision this entry exists to record; its release archive carries the stale claim and is left standing for the same reason. No skill added, removed or renamed.
 
