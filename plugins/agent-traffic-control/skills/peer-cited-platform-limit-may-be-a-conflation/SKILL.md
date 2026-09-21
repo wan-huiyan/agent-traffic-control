@@ -18,8 +18,10 @@ description: |
   quoting the limit upstream to the user will keep quoting it until it is
   corrected at the source. NOT for a limit the peer cites with a link or a command
   output, and NOT a reason to ignore a coordinator's timing or ordering decisions,
-  which are theirs to make.
-version: 1.0.0
+  which are theirs to make. Once you have refuted the platform's limit, check your
+  OWN code for the same limit one layer down: a silent clamp there makes the run
+  measure the control twice.
+version: 1.1.0
 date: 2026-09-17
 author: wan-huiyan
 disable-model-invocation: true
@@ -122,7 +124,57 @@ it costs one submission. Say which of the two you have: in the observed case the
 correction rested on the published per-task limits, because the twelve-worker arm
 was still queued behind other work when the exchange happened — the job spec was
 written and validated, not yet run. "The spec validates" and "the run completed"
-are different claims; do not let the stronger one stand in for the weaker.
+are different claims; do not let the stronger one stand in for the weaker. **That
+run has since completed and the platform did accept it**, so the empirical check
+is now in hand — and it brought a second finding the exchange had missed, in the
+amendment below.
+
+## What happened next: the limit was real one layer down (amendment, v1.1.0)
+
+The run completed. The platform accepted twelve worker processes on an eight-CPU
+task and never complained, so the peer's claim about the provider was false, as
+stated above.
+
+**The run did not use twelve workers.** The codebase clamped it:
+
+```python
+MAX_WORKERS = 8
+def workers_requested(n): return min(n, MAX_WORKERS)   # clamps, does not refuse
+```
+
+`min()` is the whole defect. Asking for twelve returned eight with no warning, no
+error and nothing in the log saying a request had been reduced. So the arm built
+to measure oversubscription ran the control configuration a second time, and the
+write-up above — correct about the platform — was incomplete about the thing that
+actually decided the run.
+
+**The guard did not catch it because it checked the request.** The unit asserted
+the environment variable said `12` and refused to start otherwise. The
+environment variable was `12`. What it needed to assert was how many processes
+forked, which the run recorded a few lines further down and nobody compared.
+
+**So: assert the EFFECT, never the REQUEST.** Anything that can silently reduce
+what you asked for — a clamp, a quota, a scheduler, a pool that reuses workers, a
+retry that halves a batch — makes "I asked for N" worthless as evidence. Record
+what actually happened (processes started, rows written, bytes fetched) and fail
+the unit when it differs from N.
+
+**And when you refute one layer's limit, sweep the others in the same breath.**
+Platform quota, runtime default, your own constant, the library's internal cap.
+The exchange above ended one round early: "the platform allows twelve" was true
+and felt like the whole answer.
+
+**Two things worth keeping about the accident.**
+
+- **An accidental replicate is evidence, not waste.** Two runs in the same
+  configuration measured run-to-run variation at about 8%, which is what let the
+  round's real result stand clear of noise. Reporting it as a failed arm would
+  have thrown away the only variance estimate the round produced. Say what it
+  measured, not what it was meant to measure.
+- **A constant like that is a production setting, so measuring it is somebody
+  else's decision.** Raising the clamp in a research build changes how the
+  production path behaves; the session that wants the number does not get to
+  make that call. Report the clamp, name who owns it, and leave it alone.
 
 ## Notes
 
