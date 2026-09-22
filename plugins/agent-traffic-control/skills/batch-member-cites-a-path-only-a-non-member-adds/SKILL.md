@@ -1,10 +1,10 @@
 ---
 name: batch-member-cites-a-path-only-a-non-member-adds
 description: |
-  Batch assembly asks if two members touch one file, never if a member's added comment or
-  tracker row cites a path only a NON-member adds. Use before flipping a batch ready.
+  You wrote something correct that the default reader cannot reach: a batch member citing a
+  path only a NON-member adds, or a rule, ruling or ledger sitting on an unlanded branch.
 disable-model-invocation: true
-version: 1.0.0
+version: 1.1.0
 date: 2026-09-22
 author: wan-huiyan
 ---
@@ -230,6 +230,77 @@ followed a path that was not there. Cost of the check: three commands, under a m
 absent — and `docs/analysis/route_generation_memory_audit_2026-09-21.md` is one of the 13. That
 is the verification for this skill, and it is why the numbers in Step 4 are measured rather than
 estimated.
+
+## The mirror: a rule everyone must obey, where the default reader cannot see it
+
+The check above is about a member NAMING a path that will not exist. The same defect points the
+other way, and it is worth the same instinct: **you wrote something correct, and the reader who
+needs it cannot reach it.**
+
+Three instances from one day, all in a repository where every session is an agent working from
+`main`:
+
+1. **Code on `main` cited a document that was not on `main`** — the case this skill was written
+   for.
+2. **An owner's ruling choosing between two approaches sat on an unlanded branch.** A session
+   asked "can we do X?", another session built X, and the ruling declining X by name was an hour
+   old and unreadable from `main`. The pull request was built, gated, opened and closed inside
+   two hours.
+3. **The single cloud-spend ledger — the file whose stated purpose is that no session keeps a
+   private count — existed only on the branch of a pull request four places down the landing
+   order.** Every session was being asked to check a daily ceiling against a file the default
+   reader could not see.
+
+There is a fourth that shows the real cost. A session recorded the owner's decision on a branch
+it never pushed; a second session could not read it, asked her the same question again, and
+**she answered twice.** The record existed, was correct, and cost her the thing it was written
+to save.
+
+**The general form: a rule, ruling or tally is not in force because it is written and correct.
+It is in force when the default reader reaches it without being told which branch to look on.**
+Until then it is enforced by people remembering to ask — which is what it was written to
+replace.
+
+### What to do
+
+- **When you write a coordination artefact** — a ledger, a ruling every session must honour, a
+  runbook rule — ask where its reader will look, and whether it is there yet.
+- **If it is not there yet, say so IN it.** One sentence: *"Until this lands, the ceiling is
+  enforced by sessions telling the coordinator, not by this file."* That converts a silent gap
+  into an instruction.
+- **Treat a records pull request carrying one as more urgent than its size suggests.** It looks
+  low-priority because it changes no code, and everyone else is being asked to obey it.
+- **Before building anything that answers a question the owner might already have answered,
+  read the rulings directory** — and read it on `main` AND on unlanded branches, because
+  instance 2 is exactly the case where `main` is clean and the answer exists anyway.
+
+### One check, and it is cheap
+
+```sh
+# 1. Does the default reader have it? This is the question that matters.
+git cat-file -e origin/main:path/to/the/rule.md 2>/dev/null \
+  && echo "on main" || echo "NOT on main — say so in the file"
+
+# 2. If not, which branches carry it? TWO commands, not one.
+git log --all --diff-filter=A --format=%H -1 -- path/to/the/rule.md
+git branch -a --contains <the sha that printed>
+```
+
+**Step 2 is two commands on purpose.** Writing it as
+`git branch -a --contains "$(git log …)"` is shorter, and a session confined to one
+worktree REFUSES to run it: the guard cannot verify that a git command in that shape
+stays inside the worktree, so it never executes. Sessions here usually ARE confined
+to a worktree, so the one-liner is unrunnable for most of its readers. Both commands
+above were run, split, before this was written — which is how the shape was found.
+
+`git branch -a` rather than `-r`, because a `+` in front of a local branch means
+another worktree has it checked out — which tells you a peer is holding the file,
+not just that it exists somewhere.
+
+**A presence check against a moving branch expires.** Record the SHA you verified against, not
+just the branch name — a peer pushing twice while you read makes "present on branch X" a
+statement about a tree that no longer exists. "Absent from `main`" does not expire the same way,
+which is why the `origin/main` check is the one to lead with.
 
 ## Notes
 
