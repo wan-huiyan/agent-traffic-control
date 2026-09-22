@@ -3,8 +3,8 @@
   "engine_version": "0.1.0",
   "repository": "wan-huiyan/memory-hygiene",
   "files": {
-    "context_router.py": "f37ca17e1e718a22934de3f4e78699630edade01f9f9bad451fbe6908d6f043f",
-    "jev_provider.py": "3e39d723eace6163d938078c76fdd184fac7c69305bd698096f849a4e988b576"
+    "context_router.py": "20cc874b6100b4fd6782d602b0ed55d59afb4925e171a39fe7cac3cdea7dc55f",
+    "jev_provider.py": "527a92fc522ca2e6ae181d3b4c8b1441de34d679772e768ada578349aa8789ee"
   },
-  "companion_commit": "226cca9e6ea7dfef1a9b62ac77120a294e117904"
+  "companion_commit": "7b30e95931b3dd3b920e96e26494138f3c9507f6"
 }

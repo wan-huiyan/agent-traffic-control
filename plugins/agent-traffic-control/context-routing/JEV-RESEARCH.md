@@ -43,6 +43,7 @@ unless an operator passes `--jev` **and** has marked records `egress_approved` w
 | 14 | Is the ranking method sound for this use? | **OPEN, with a vendor caveat against it** | The vendor states noul values **"aren't directly comparable across questions"**, and `rank()` builds its ranking key from exactly that — one separate question per candidate. Not fatal; it means a threshold tuned on one corpus must not be assumed to transfer. | Add an arm that asks one `choice` question over all candidates instead of N `noul` questions, and compare. |
 | 15 | Does candidate count degrade accuracy? | **OPEN** | The vendor states unrelated detail acts as a distractor as `state` grows, and `rank()` puts up to 32 candidates in one `state`, so every per-candidate question sees all 32. The cap of 32 has no basis in the vendor's pages. | Run the same corpus at 8, 16 and 32 candidates per call. |
 | 16 | Egress review | **BLOCKED on a human** | The guard is real: the engine refuses `egress_approved` without `reviewed: true`. Nobody has yet reviewed a real `public_summary` set. The 23 summaries used for the probe were this public repository's own skill descriptions, which is safe here and says nothing about private memories. | Review summaries per record before the combined private registry is ever used with `--jev`. |
+| 16b | Does the egress screen refuse ordinary prose, and does it cost us? | **ESTABLISHED — not here, yet** | The companion's open issue (`memory-hygiene#13`) is real and reproduced: `screen_public` refuses ordinary sentences — one naming a Bearer token in an Authorization header, another giving an SSH clone URL — and a refused screen drops the whole ranking call to local retrieval **silently**. (Both reproduced here; the literals are left out of this file on purpose, because **this repo's own leak gate refuses the SSH one too** — it matches the generic email pattern. Two independent scanners tripping on the same string is worth noting: the pattern is broad in both, and in one of them the refusal is silent.) Measured against this repo: **0 of 23 live skill descriptions are refused**, so it costs the ATC C-arm nothing today. It is security-adjacent wording that trips it, and this is a coordination toolkit. | Before reading any C-arm miss as a ranking failure, check `provider.status` for `local_privacy_fallback`. Re-measure this row if the combined private registry is ever used. |
 | 17 | Measured main-model token and cache effect | **OPEN** | The whole justification for routing. Byte counts are exact bytes; no billed-token or cache claim has been measured, and the pull requests correctly make none. | Needs the host adapter named in the evaluation doc. Nothing exists for it yet. |
 | 18 | macOS installed-host integration | **OPEN** | Everything so far ran from a checkout, not an installed plugin. | Install the plugin, point the adapter at the installed path, re-run rows 7–9. |
 
@@ -107,9 +108,16 @@ needs an operator to switch something on first.
    full 40-character SHA. This was found the hard way — the re-pin in this commit had to change
    both by hand.
 
-**In the companion repository — recorded, not fixed**
+**In the companion repository — all four now fixed upstream (2026-09-22)**
 
-1. **A dead pin reports as a network problem, and it is two layers.** `jev_provider.py:_post`
+The companion session reproduced all four, fixed them in one pull request so this repo re-pins
+once, and merged as `7b30e95`. Verified here against the live API before re-pinning rather than
+taken on the message: each failure mode now names itself — retired pin `http_400`, bad key
+`http_401`, unreachable host `connection_failed` — where all three previously arrived as
+`transport_failure`. Struck through below for the record; the diagnosis is kept because the
+shape of the mistake is the reusable part.
+
+1. ~~**A dead pin reports as a network problem, and it is two layers.**~~ **Fixed in `7b30e95`.** `jev_provider.py:_post`
    lets `urllib` raise `HTTPError` on a 4xx and `_evaluate` wraps every non-`ProviderError` as
    `transport_failure`, so a retired `jev-1.13.0` surfaces as an outage rather than the server's
    own `Unknown model`. Fixing only that is not enough: one layer up,
@@ -122,12 +130,34 @@ needs an operator to switch something on first.
    `ProviderError("api_error_" + str(code))` keeping the server's `error_type` (not its
    `message`, which could echo payload content), and carry the `ProviderError`'s own code
    through instead of its class name.
-2. **`MAX_REQUEST_BYTES = 48000` is an invented number** presented like a contract limit. The
+2. ~~**`MAX_REQUEST_BYTES = 48000` is an invented number**~~ Documented in `7b30e95`; it is an invented number presented like a contract limit. The
    documented boundary is a token split, not a byte count. See row 5.
-3. **The 32-candidate cap is unexplained** and, past it, the candidates dropped from judging are
-   chosen by id string rather than by relevance. See row 15.
-7. **The audit path hardcodes `cost_unknown: true`**, so `audit --jev` with no API key reports
-   spend that provably never happened.
+3. ~~**The 32-candidate cap is unexplained** and, past it, the candidates dropped from judging
+   are chosen by id string rather than by relevance.~~ Fixed in `7b30e95`, and **the companion's
+   diagnosis was worse than ours**: because `dep-` sorts ahead of `seed-` and records pulled in
+   by a dependency closure carry no lexical score, the old ordering could judge 32 dependencies
+   and **zero matching seeds**. Now ordered by local relevance before truncating, and what was
+   dropped is reported separately under `over_fanout_cap_ids` — never-sent is a different fact
+   from sent-and-scored-low. Does not bite this repository yet: 23 approved candidates against
+   a cap of 32, so that list is empty here and will stay empty until the combined private
+   registry is used. See row 15.
+7. ~~**The audit path hardcodes `cost_unknown: true`**, so `audit --jev` with no API key
+   reports spend that provably never happened.~~ Fixed in `7b30e95`; it now derives from
+   `attempted`, matching the route path.
+
+**10. A fifth defect, found by the companion's own adversarial review, and it was ours to check.**
+`_evaluate` type-checked two keys of the response `usage` object and then returned the server's
+**whole dict**, so any extra key a response carried — including a string — rode through into
+`provider_report`, which `main()` prints and which reaches a model. Now rebuilt from an
+allowlist. It was introduced in `226cca9` and fixed in `7b30e95`, which is exactly the window
+this repository's first live runs sat in. **Checked, not assumed:** all six provider reports
+captured during that window were re-read key by key against the allowlist and every one is
+clean — the live service returned only the two documented `usage` integers. Nothing was
+exposed, and the reason is that the vendor behaved, not that the code stopped it.
+
+This is the argument for recording a real response rather than trusting a fake: the companion's
+93 offline tests all use an injected transport shaped to pass its own validator, and none of
+them could have produced a response with an unexpected key in it.
 
 ## The one result that changes the evaluation design
 
@@ -147,6 +177,21 @@ Three consequences, and they are the reason to read `JEV-FIRST-RUN.md` before de
   byte budget**, and bytes needed to reach a fixed coverage.
 - Choose the default budget from this repository's real bundle sizes before any arm is scored.
   It is a one-line change with more effect on the outcome than the choice of provider.
+
+## The budget finding, confirmed independently
+
+The companion session re-measured it against this user's whole installed skill set rather than
+this one repository, and it generalises harder than the ATC numbers suggested:
+
+| corpus | files | median | over the 16,000-byte default |
+|---|---|---|---|
+| `~/.claude/skills` | 1,252 | 7,773 B | **104 skills exceed it on their own** |
+| memory files | 14 | 2,320 B | none |
+
+That is the sharper version of the finding: **16,000 is defensible for a memory store and badly
+undersized for a skill store**, and the engine's default was set for the former. Neither session
+has changed it — the shipped default is a calibration decision for the owner, which is row 4 of
+the decision page rather than something to fix in passing.
 
 ## Standing rules for this strand
 

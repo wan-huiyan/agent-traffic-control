@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: wan-huiyan/memory-hygiene
-          ref: 226cca9e6ea7dfef1a9b62ac77120a294e117904
+          ref: 7b30e95931b3dd3b920e96e26494138f3c9507f6
           path: memory-hygiene
           persist-credentials: false
       - uses: actions/setup-python@v5
