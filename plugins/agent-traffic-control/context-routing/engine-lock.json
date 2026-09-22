@@ -4,7 +4,7 @@
   "repository": "wan-huiyan/memory-hygiene",
   "files": {
     "context_router.py": "f37ca17e1e718a22934de3f4e78699630edade01f9f9bad451fbe6908d6f043f",
-    "jev_provider.py": "548262537f8bbcb929ce1991707449e3c85e51e03bd8172608a41cec9f49af1c"
+    "jev_provider.py": "3e39d723eace6163d938078c76fdd184fac7c69305bd698096f849a4e988b576"
   },
-  "companion_commit": "bf32ef45d5392fb10500e13c5e7041d0b43cb578"
+  "companion_commit": "226cca9e6ea7dfef1a9b62ac77120a294e117904"
 }

@@ -179,6 +179,130 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(sum(r["kind"] == "skill" for r in registry["records"]), len(expected))
         self.assertGreater(len(expected), 0)
 
+    # --- Regressions for three defects found by review, each reproduced before it was fixed.
+    # Every one of these fails if its guard is removed; the 24 tests that shipped with the
+    # original branch all stayed green through both fixes, which is why they are here.
+
+    def test_shipping_preflight_is_not_bypassed_by_spelling(self):
+        """next_action "Merge" returned status ok with zero findings; only "merge" fired."""
+        fired = {}
+        for spelling in ("merge", "Merge", "MERGE", " merge ", "create_pr", "Create-PR"):
+            state = dict(self.state, next_action=spelling)
+            _, findings = adapter.prepare_state(state, self.registry)
+            fired[spelling] = len(findings)
+        self.assertTrue(all(count >= 2 for count in fired.values()), fired)
+
+    def test_unrecognised_action_is_not_treated_as_a_shipping_action(self):
+        """Normalising must not widen the set: a non-shipping action still returns clean."""
+        _, findings = adapter.prepare_state(dict(self.state, next_action="read"), self.registry)
+        self.assertEqual(findings, [])
+
+    def test_absent_writes_code_still_requires_isolation_evidence(self):
+        """Unknown is not False. An identity check on writes_code skipped the whole gate."""
+        for observation in ({}, {"writes_code": True}, {"writes_code": "yes"}):
+            state = dict(self.state, next_action="dispatch", **observation)
+            prepared, findings = adapter.prepare_state(state, self.registry)
+            self.assertIn(adapter.PREFIX + adapter.ISOLATION, prepared["required_ids"], observation)
+            self.assertTrue(findings, observation)
+        state = dict(self.state, next_action="dispatch", writes_code=False)
+        _, findings = adapter.prepare_state(state, self.registry)
+        self.assertEqual(findings, [])
+
+    class RecordingProvider:
+        """Records what actually left, so a test cannot pass by the call never happening."""
+
+        identity = {"provider": "recording", "model": "none", "schema": 1}
+
+        def __init__(self):
+            self.seen = []
+
+        def rank(self, public_task, public_summaries):
+            self.seen.append(public_task)
+            return {key: 1.0 for key in public_summaries}, {"status": "live", "attempted": True}
+
+    def egress_registry(self):
+        """A registry the provider will ACTUALLY be asked about. Without an egress-approved
+        record carrying a reviewed public summary the engine never calls the provider at
+        all, and a test written against the plain fixture passes whether the guard is
+        present or not -- which is how the first version of the test below was wrong."""
+        return adapter.export(self.core, self.root, {
+            "skills/live/SKILL.md": {"public_summary": "A deploy procedure, reviewed for egress.",
+                                     "egress_approved": True, "reviewed": True}})
+
+    def test_the_recording_provider_is_reached_on_a_clean_route(self):
+        """Control for the test below: prove the fixture CAN reach the provider."""
+        provider = self.RecordingProvider()
+        result = adapter.run(self.core, self.root, self.egress_registry(),
+                             dict(self.state, next_action="read", public_task="a public capsule"),
+                             provider=provider)
+        self.assertNotEqual(result["status"], "preflight_required")
+        self.assertEqual(result["provider"]["status"], "live")
+        self.assertEqual(len(provider.seen), 1)
+
+    def test_refused_route_never_reaches_the_provider(self):
+        """The downgrade ran AFTER core.route, so a refused shipping route had already sent
+        the public capsule to the third party and paid for it."""
+        provider = self.RecordingProvider()
+        result = adapter.run(self.core, self.root, self.egress_registry(),
+                             dict(self.state, next_action="merge", public_task="a public capsule"),
+                             provider=provider)
+        self.assertEqual(result["status"], "preflight_required")
+        self.assertEqual(provider.seen, [], "a refused route sent the public capsule to the provider")
+
+
+    def hook_run(self, payload, state, mode="active"):
+        """Drive main() down the real hook path and return (stdout, exit code)."""
+        registry_path = Path(self.temp.name) / "registry.json"
+        registry_path.write_text(json.dumps(self.registry))
+        state_path = Path(self.temp.name) / "state.json"
+        state_path.write_text(json.dumps(state))
+        argv = ["--engine", str(SCRIPTS), "--root", str(self.root), "hook",
+                "--registry", str(registry_path), "--state", str(state_path), "--mode", mode]
+        out = io.StringIO()
+        with patch("sys.stdin", io.StringIO(json.dumps(payload))), patch("sys.stdout", out):
+            code = adapter.main(argv)
+        return out.getvalue(), code
+
+    def test_hook_binding_is_not_satisfied_by_two_absences(self):
+        """`payload.get("cwd") != state.get("worktree")` passed on None == None, so a
+        state file with no worktree bound to any working directory."""
+        payload = {"hook_event_name": "UserPromptSubmit", "session_id": "session-a", "prompt": "hi"}
+        state = dict(self.state, next_action="read")
+        state.pop("worktree")
+        out, code = self.hook_run(payload, state)
+        self.assertEqual(code, 0, "a hook error must never block the prompt")
+        self.assertEqual(out, "", "an unbound hook emitted advisory context")
+
+    def test_hook_binding_accepts_a_matching_pair(self):
+        """Control: the hardened check must still let a correctly configured hook through."""
+        payload = {"hook_event_name": "UserPromptSubmit", "session_id": "session-a",
+                   "cwd": "/synthetic/worktree-a", "prompt": "hi"}
+        out, code = self.hook_run(payload, dict(self.state, next_action="read"))
+        self.assertEqual(code, 0)
+        self.assertIn("hookSpecificOutput", out)
+
+    def test_hook_discards_a_saved_writes_code(self):
+        """A saved writes_code: false skipped the dispatch isolation gate on every later
+        prompt. It is discarded with the other stale observations."""
+        payload = {"hook_event_name": "UserPromptSubmit", "session_id": "session-a",
+                   "cwd": "/synthetic/worktree-a", "prompt": "dispatch the workers"}
+        state = dict(self.state, next_action="dispatch", writes_code=False,
+                     isolation_verified=True)
+        out, _ = self.hook_run(payload, state)
+        self.assertIn("could not supply a verified complete bundle", out)
+        self.assertNotIn("Candidate canonical references", out)
+
+    def test_workflow_ref_matches_the_engine_lock(self):
+        """The workflow's checkout ref is a second copy of companion_commit. Nothing
+        compared them, and re-pinning one without the other is a silent split."""
+        lock = json.loads((HERE / "engine-lock.json").read_text())
+        workflow = (REPO / ".github/workflows/context-routing.yml").read_text()
+        refs = [line.split("ref:", 1)[1].strip()
+                for line in workflow.splitlines() if line.strip().startswith("ref:")]
+        self.assertEqual(refs, [lock["companion_commit"]])
+        self.assertRegex(lock["companion_commit"], r"^[0-9a-f]{40}$")
+
+
 
 if __name__ == "__main__":
     unittest.main()

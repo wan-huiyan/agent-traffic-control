@@ -53,16 +53,22 @@ def prepare_state(state: dict, registry: dict) -> tuple[dict, list[str]]:
     required = set(state.get("required_ids", []))
     required.add(PREFIX + GUARD)
     findings = []
-    if state.get("next_action") == "dispatch" and state.get("writes_code") is True:
+    # Compare a NORMALISED copy. An exact-string membership test made the whole shipping
+    # preflight bypassable by a capital letter: next_action "Merge" returned status ok with
+    # zero findings while "merge" returned preflight_required. Normalise here only; the
+    # engine reads next_action as free text for term matching, so the state it sees is
+    # deliberately left alone.
+    action = str(state.get("next_action", "")).strip().lower().replace("_", "-")
+    if action == "dispatch" and state.get("writes_code") is not False:
         required.add(PREFIX + ISOLATION)
         if state.get("isolation_verified") is not True:
             findings.append("Verify real dispatch isolation parameters/worktree paths before workers write.")
-    if state.get("next_action") in SHIP_ACTIONS:
+    if action in SHIP_ACTIONS:
         if state.get("resume_integrity") != "verified":
             findings.append("Interrupted-work integrity is unverified; preserve the existing resume-gate review.")
         if not state.get("current_revision") or state.get("checked_revision") != state["current_revision"]:
             findings.append("Re-read live/base revision immediately before shipping; recorded verification is stale or absent.")
-    if state.get("next_action") == "pickup" and state.get("claim_verified") is not True:
+    if action == "pickup" and state.get("claim_verified") is not True:
         findings.append("Read current issue ownership and perform the existing claim protocol before starting work.")
     state["required_ids"] = sorted(required)
     state["policy_revision"] = "atc-context-routing-v1"
@@ -74,6 +80,13 @@ def run(core, root: Path, registry: dict, state: dict, *, mode="shadow", budget_
     if mode == "off" or os.environ.get("CONTEXT_ROUTER_DISABLE") == "1":
         return {"status": "off", "context": "", "selected_ids": []}
     state, findings = prepare_state(state, registry)
+    # A route the adapter is going to refuse must not reach the provider first. The
+    # downgrade below used to run AFTER core.route, so a shipping action with unverified
+    # observations returned preflight_required having already sent the public capsule and
+    # candidate summaries to the third party, and paid for it. Drop the provider before the
+    # call, not after: the refusal has to precede the egress, not describe it.
+    if findings:
+        provider = None
     result = core.route(registry, root, state, mode=mode, budget_bytes=budget_bytes,
                         provider=provider, session=session)
     result["preflight_findings"] = findings
@@ -197,13 +210,28 @@ def main(argv=None):
                 payload = json.loads(raw)
                 if payload.get("hook_event_name") != "UserPromptSubmit":
                     raise ValueError("unsupported_hook_event")
-                if payload.get("session_id") != state.get("session_id") or payload.get("cwd") != state.get("worktree"):
+                # Both sides must actually CARRY the binding. `!=` alone is vacuous when
+                # the payload and the state file both omit a field: None == None passed,
+                # so a state file with no worktree key bound to any working directory.
+                bound = (payload.get("session_id"), payload.get("cwd"))
+                if not all(isinstance(v, str) and v for v in bound):
+                    raise ValueError("hook_payload_missing_session_binding")
+                if not all(isinstance(state.get(k), str) and state.get(k)
+                           for k in ("session_id", "worktree")):
+                    raise ValueError("hook_state_missing_session_binding")
+                if bound != (state["session_id"], state["worktree"]):
                     raise ValueError("hook_session_or_worktree_mismatch")
                 state["latest_message"] = payload.get("prompt", "")
                 state["as_of"] = date.today().isoformat()
                 # A prompt hook lacks fresh host action observations; it must not claim
                 # that a saved action/preflight verification is current.
-                for key in ("isolation_verified", "claim_verified", "checked_revision", "resume_integrity"):
+                # writes_code is discarded with them: a saved `false` would skip the
+                # dispatch isolation gate on every later prompt. Dropping it is only safe
+                # because prepare_state now treats an absent value as unknown and requires
+                # the evidence anyway -- popping it under the old `is True` test disabled
+                # the gate instead of tightening it.
+                for key in ("isolation_verified", "claim_verified", "checked_revision",
+                            "resume_integrity", "writes_code"):
                     state.pop(key, None)
             provider = None
             if getattr(args, "jev", False):

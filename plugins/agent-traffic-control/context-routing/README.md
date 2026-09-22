@@ -7,7 +7,9 @@ scratch lean preview. It does not execute commands or grant permission.
 ## Dependency
 
 Use the companion memory-hygiene context-routing PR's scripts directory. The adapter
-verifies engine-lock.json's **file hashes and API version before importing anything**.
+verifies engine-lock.json's **file hashes before importing anything**, and asserts the
+engine's API/version constants immediately after the module executes — the digest is what
+guards the import, the version constants are a contract check on code already loaded.
 Do not select a random 'latest' cache directory. If either core/provider file changes,
 review the change and update the lock together; a mismatch is visible, not ignored.
 The lock's companion_commit is the exact source revision for CI checkout.
@@ -25,7 +27,7 @@ suppressed. Preserve private permissions on state/index/report files (umask 077)
 keep them outside the public repo. The existing plugin installation continues unchanged.
 
 The current repository already has live/reference-only tiers and a catalogue budget.
-This adapter respects those decisions, not '122 full skills loaded on every turn'.
+This adapter respects those decisions, not '123 full skills loaded on every turn'.
 Manual-only source controls are preserved. Declaring a required dependency cannot make
 one automatically invocable. Existing host tool/fork permissions remain the host's job.
 
