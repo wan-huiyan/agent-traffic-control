@@ -1,0 +1,31 @@
+name: Context routing adapter regressions
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: atc
+      - uses: actions/checkout@v4
+        with:
+          repository: wan-huiyan/memory-hygiene
+          ref: 226cca9e6ea7dfef1a9b62ac77120a294e117904
+          path: memory-hygiene
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests/context_routing -v
+        working-directory: atc
+        env:
+          CONTEXT_ROUTER_HOME: ${{ github.workspace }}/memory-hygiene/plugins/memory-hygiene/scripts
