@@ -142,6 +142,13 @@ Say which layer failed, what the run produced, and where each reading came from:
 - **A run that survives is not proof of headroom.** The same wish at the same size
   finished at 7.11 GiB of 8 GiB, and the pair differed only in which items each
   happened to work on. Report the margin, not the pass.
+- **Prevention, where the worker is a local test leg**: [`leg-guard`](../../hooks/leg-guard/)
+  refuses to start one while a peer's is running. It does **not** judge memory — a
+  process count cannot see RAM — so it prevents the contention case, not this one.
+  Worth installing anyway: on 2026-09-22 a leg died with `exit=-15` while memory read
+  81% free, and the artefact was indistinguishable from an OOM kill. The guard that
+  would have prevented it is a contention guard, and the reading that would have
+  classified it is the receipt's refusal, not the exit code.
 - **Sister skill**: [`parallel-gate-legs-killed-for-memory-count-cannot-see-ram`](../parallel-gate-legs-killed-for-memory-count-cannot-see-ram/SKILL.md)
   — the same killer one layer down, where a local test leg is stopped for memory
   on a shared machine and a process-count guard cannot see RAM.
