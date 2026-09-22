@@ -13,6 +13,13 @@ HOOK = Path(__file__).resolve().parents[1] / "leg_guard.py"
 
 sys.path.insert(0, str(HOOK.parent))
 import leg_guard as _lg
+import install as _install
+
+# Run the hook on the interpreter the INSTALLER writes into settings.json, not
+# on whatever runs pytest. They differ on this laptop (3.9 against 3.14), and a
+# hook that only works on the newer one crashes live -- and a crash fails OPEN,
+# so the guard would switch itself off with every test green.
+PY = _install.INTERPRETER if Path(_install.INTERPRETER).exists() else sys.executable
 
 
 def PEER_PATTERN_MATCHES(ps_row):
@@ -44,7 +51,7 @@ def run(command, ps_rows, env=None):
     e["PATH"] = d + ":" + e["PATH"]
     e.update(env or {})
     p = subprocess.run(
-        [sys.executable, str(HOOK)],
+        [PY, str(HOOK)],
         input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}),
         capture_output=True, text=True, env=e, timeout=30,
     )
@@ -108,13 +115,13 @@ def test_a_capitalised_interpreter_is_still_matched():
 
 
 def test_malformed_stdin_fails_OPEN_rather_than_blocking_every_bash_call():
-    p = subprocess.run([sys.executable, str(HOOK)], input="not json",
+    p = subprocess.run([PY, str(HOOK)], input="not json",
                        capture_output=True, text=True, timeout=30)
     assert p.returncode == 0
 
 
 def test_no_stdin_at_all_fails_open():
-    p = subprocess.run([sys.executable, str(HOOK)], input="",
+    p = subprocess.run([PY, str(HOOK)], input="",
                        capture_output=True, text=True, timeout=30)
     assert p.returncode == 0
 
@@ -129,7 +136,7 @@ def test_a_broken_ps_fails_open_rather_than_blocking():
     fake.chmod(0o755)
     e = dict(os.environ); e["PATH"] = d + ":" + e["PATH"]
     p = subprocess.run(
-        [sys.executable, str(HOOK)],
+        [PY, str(HOOK)],
         input=json.dumps({"tool_name": "Bash",
                           "tool_input": {"command": "pytest prototype -q"}}),
         capture_output=True, text=True, env=e, timeout=30)
