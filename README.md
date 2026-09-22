@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 123 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 124 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 123 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 123 skills
+# Install the plugin — one shot, gets all 124 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 123 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 124 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -208,6 +208,7 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 | [**merge-queue-thrash-stop-inflow-and-open-prs-as-drafts**](plugins/agent-traffic-control/skills/merge-queue-thrash-stop-inflow-and-open-prs-as-drafts/) | Main moves faster than the slowest CI leg, so every branch is BEHIND before its own run finishes and nothing lands with nothing red. Stop the inflow, land one at a time — and open every PR as a draft, which measured ~46s against ~16min and would have saved 23–48% of CI minutes over 8 days. |
 | [**auto-merge-rearms-while-agent-live-kill-then-disarm-verify**](plugins/agent-traffic-control/skills/auto-merge-rearms-while-agent-live-kill-then-disarm-verify/) | Disarming auto-merge does not hold a PR whose agent is still running — arming is a step in the agent's brief, so it re-arms and merges. Kill the agent first, then disarm, then read the state back; or convert to draft, which GitHub enforces. |
 | [**batch-merge-subject-is-not-evidence-a-member-landed**](plugins/agent-traffic-control/skills/batch-merge-subject-is-not-evidence-a-member-landed/) | A batch or roll-up commit's subject names its members, but the batch was assembled before the member's last push — so a named member can still be hundreds of lines ahead of main. Compare content file by file, expecting exactly one legitimate difference: the shared aggregate file every member appends to. |
+| [**batch-member-cites-a-path-only-a-non-member-adds**](plugins/agent-traffic-control/skills/batch-member-cites-a-path-only-a-non-member-adds/) | Batch assembly asks whether two members touch the same file; nothing asks whether a member's added comment, docstring or tracker row NAMES a path that only a non-member adds. Nothing resolves a path inside prose, so the batch merges green and the target branch points at a file it does not have. Subtract the post-merge path set from the paths the members cite. |
 | [**ci-leg-skipping-moves-minutes-it-does-not-remove-them**](plugins/agent-traffic-control/skills/ci-leg-skipping-moves-minutes-it-does-not-remove-them/) | A filter that makes a CI leg skip on pull requests moves its minutes to the merge or backstop run rather than deleting them — a branch that lands first time saves exactly zero. Ask whether a proposed saving removes RUNS or merely moves LEGS. |
 | [**gh-pr-checks-exit-code-folds-a-by-design-red-wait-on-the-row**](plugins/agent-traffic-control/skills/gh-pr-checks-exit-code-folds-a-by-design-red-wait-on-the-row/) | `gh pr checks` returns one exit status for the whole pull request, so a context your repo keeps red on purpose (a required aggregation gate while the PR is a draft, an allowed-failure job) makes a background waiter report failure on a PR where everything that ran passed — poll the ROW, and remember `8` means pending |
 | [**clean-merge-lands-line-guard-on-a-value-neither-branch-predicted**](plugins/agent-traffic-control/skills/clean-merge-lands-line-guard-on-a-value-neither-branch-predicted/) | Two branches each re-aim the same guard that pins `path:NNN`, each correctly for its own tree, and git merges both edits with no conflict — leaving a merged tree whose real line is neither number. The guard files then look freshly fixed, so leaving them alone reads as respect. Re-grep the anchor TEXT on the merged bytes, run the guards before the long legs, and never carry an offset. |
