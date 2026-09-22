@@ -74,7 +74,7 @@ def test_a_leg_is_BLOCKED_when_a_peer_leg_is_running():
 def test_the_override_lets_it_through_and_says_so():
     code, err = run("DR_LEG_FORCE=1 .venv/bin/python -m pytest prototype -q", [PEER_SERIAL])
     assert code == 0
-    assert "DR_LEG_FORCE=1 present" in err
+    assert "DR_LEG_FORCE=1 marker present" in err
 
 
 def test_a_wrapper_shell_is_not_counted_as_a_leg():
@@ -164,3 +164,52 @@ def test_a_peer_is_still_found_when_our_ancestry_is_unrelated():
         assert len(_lg.peer_legs({1234})) == 1
     finally:
         _lg._ps_lines = saved
+
+
+def test_a_command_that_merely_MENTIONS_a_leg_is_not_blocked():
+    """The false positive that the first live install produced.
+
+    An edit whose heredoc carried `-m pytest prototype` as TEST DATA was
+    refused, because the match was a bare substring. A guard that fires on a
+    command talking about a leg -- writing a test for one, echoing it, passing
+    it as JSON -- gets switched off, and then guards nothing.
+    """
+    mentions = [
+        """python3 -c 'print("run: python -m pytest prototype -q")'""",
+        """echo ".venv/bin/python -m pytest prototype -q" > /tmp/note.txt""",
+        """python3 - <<'EOF'\npayload = {"command": "python -m pytest prototype -q"}\nEOF""",
+        """grep -n "pytest prototype" docs/runbook.md""",
+    ]
+    for cmd in mentions:
+        code, err = run(cmd, [PEER_SERIAL])
+        assert code == 0, "blocked a command that only MENTIONS a leg:\n%s\n%s" % (cmd, err)
+
+
+def test_the_real_invocation_forms_are_still_caught():
+    """The control for the test above: these genuinely start a leg."""
+    real = [
+        ".venv/bin/python -m pytest prototype -q",
+        "cd /tmp/wt && /Users/x/.venv/bin/python -m pytest server -q",
+        "PYTHONPATH=. .venv/bin/python -m pytest docs -q -m 'not slow'",
+        "pytest tracker -q",
+        "cd /tmp/wt && python scripts/gate_receipt.py run --out ~/r",
+        "git status && .venv/bin/python -m pytest stravart -q",
+    ]
+    for cmd in real:
+        code, _ = run(cmd, [PEER_SERIAL])
+        assert code == 2, "let a real leg through: %s" % cmd
+
+
+def test_the_marker_works_as_a_trailing_comment_not_only_as_a_prefix():
+    """The message tells people to use it as a comment, so that must work.
+
+    The first version of the block message suggested prefixing
+    `DR_LEG_FORCE=1 ` to the command, which reads as shell env syntax but is
+    really a text marker -- and prefixing it to a `cd x && ...` chain would set
+    an env var for `cd` alone. The message now says "anywhere", including as a
+    trailing comment, and this pins that.
+    """
+    code, err = run(".venv/bin/python -m pytest prototype -q   # DR_LEG_FORCE=1", [PEER_SERIAL])
+    assert code == 0, err
+    code, err = run("cd /tmp/w && DR_LEG_FORCE=1 pytest server -q", [PEER_SERIAL])
+    assert code == 0, err

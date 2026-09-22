@@ -15,7 +15,7 @@ WHAT IT DOES
   no peer leg running                          -> allow
   a peer leg is running                        -> BLOCK (exit 2), naming it
 
-FOUR THINGS THAT ARE EASY TO GET WRONG, ALL LEARNED THE HARD WAY
+FIVE THINGS THAT ARE EASY TO GET WRONG, ALL LEARNED THE HARD WAY
 
 1. The top-level `matcher` is a regex on the TOOL NAME ONLY. It cannot see the
    command a Bash call runs, so the command test has to happen in here. (A
@@ -31,7 +31,12 @@ FOUR THINGS THAT ARE EASY TO GET WRONG, ALL LEARNED THE HARD WAY
    So this reads LINES with parentage and filters wrapper shells explicitly,
    and tests for ZERO rather than for "under N".
 
-4. It must FAIL OPEN. This runs on every Bash call in every session; an
+4. It must match a leg being RUN, not one being TALKED ABOUT. A substring
+   match blocks any command that merely mentions a leg -- an edit writing a
+   test for one, an echo, a JSON payload. Measured on the first live install.
+   So matching is anchored to the start of a shell segment.
+
+5. It must FAIL OPEN. This runs on every Bash call in every session; an
    exception here would brick them all. Any internal error allows the command
    and prints the reason, because a guard that silently blocks everything is
    worse than one that silently blocks nothing.
@@ -56,12 +61,32 @@ import sys
 # Suite directories whose runs are heavy enough to be worth serialising.
 SUITES = ("prototype", "server", "tracker", "docs", "stravart")
 
-# What counts as starting a heavy leg, in the command WE are about to run.
+# What counts as STARTING a heavy leg, in the command WE are about to run.
+#
+# These are anchored at the start of a shell segment, because a substring match
+# fires on any command that merely MENTIONS a leg -- writing a test about one,
+# echoing it, or passing it as JSON to a script. Measured: the first live
+# install blocked an edit whose heredoc happened to contain
+# `-m pytest prototype` as test data. A guard that misfires gets switched off,
+# so it must match a leg being RUN, not a leg being talked about.
+#
+# Tolerated before the interpreter: env assignments (FOO=bar) and a leading
+# `cd <path> &&`, both of which are how these are really invoked.
 _SUITE_ALT = "|".join(SUITES)
+_PREFIX = r"^\s*(?:\w+=\S*\s+)*(?:cd\s+\S+\s*&&\s*)?(?:\w+=\S*\s+)*"
 LEG_PATTERNS = (
-    re.compile(r"\bpytest\b[^|;&]*\b(%s)\b" % _SUITE_ALT),
-    re.compile(r"gate_receipt\.py\s+run\b"),
+    re.compile(_PREFIX + r"\S*python\S*\s+-m\s+pytest\s+[^|;&]*\b(%s)\b" % _SUITE_ALT),
+    re.compile(_PREFIX + r"\S*pytest\s+[^|;&]*\b(%s)\b" % _SUITE_ALT),
+    re.compile(_PREFIX + r"(?:\S*python\S*\s+)?\S*gate_receipt\.py\s+run\b"),
 )
+# Shell separators that begin a new command position.
+_SEGMENT = re.compile(r"&&|\|\||;|\n|\|")
+
+
+def starts_a_leg(cmd: str) -> bool:
+    """True only if some shell SEGMENT begins with a heavy-leg invocation."""
+    segments = [cmd] + _SEGMENT.split(cmd)
+    return any(p.search(s) for s in segments for p in LEG_PATTERNS)
 
 # What counts as a peer's leg, in a `ps` line. Deliberately case-insensitive:
 # a venv python execs a framework binary with a capitalised argv[0], and the
@@ -158,12 +183,12 @@ def main() -> int:
     except Exception:
         return 0                                   # fail open: not our business
     cmd = (payload.get("tool_input") or {}).get("command") or ""
-    if not cmd or not any(p.search(cmd) for p in LEG_PATTERNS):
+    if not cmd or not starts_a_leg(cmd):
         return 0                                   # not a heavy leg
 
     if OVERRIDE in cmd:
         sys.stderr.write(
-            "leg-guard: %s present, starting anyway. Peers running: %d\n"
+            "leg-guard: %s marker present, starting anyway. Peers running: %d\n"
             % (OVERRIDE, len(peer_legs(my_process_ancestry())))
         )
         return 0
@@ -186,9 +211,12 @@ def main() -> int:
         "and a leg killed under contention writes NO measurement -- it reads as a",
         "test failure to whoever finds it next. Wait for these to finish.",
         "",
-        "If you genuinely must proceed, say so deliberately:",
+        "If you genuinely must proceed, say so deliberately by putting this",
+        "marker ANYWHERE in the command. The guard looks for the text, so it",
+        "needs no shell export and works inside a `cd x && ...` chain, or as",
+        "a trailing comment:",
         "",
-        "  %s %s" % (OVERRIDE, cmd.strip()[:120]),
+        "  <your command>   # %s" % OVERRIDE,
         "",
         "Do NOT kill a peer's leg to clear the way: it destroys a measurement its",
         "owner will read as red.",

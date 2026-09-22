@@ -76,9 +76,24 @@ the hook silently and completely.
 
     python3 -m pytest tests/ -q
 
-Thirteen cases, each paired so an allow-case and a block-case differ in exactly
+Sixteen cases, each paired so an allow-case and a block-case differ in exactly
 one thing. Every guard has been mutation-checked: breaking it makes the suite
-fail. The mutation check found **two real defects on its first run**. One was a
+fail. **Installing it live found a third defect the fixtures could not.** The first
+build matched the leg pattern as a bare substring, so it blocked an edit whose
+heredoc merely *contained* `-m pytest prototype` as test data. A guard that
+fires on a command *talking about* a leg gets switched off within a day, and
+then guards nothing. Matching is now anchored to command position — the leg
+invocation must begin a shell segment, after optional `FOO=bar` assignments and
+a leading `cd <path> &&` — with tests in both directions: four commands that
+only mention a leg must pass, six real invocation forms must still block.
+
+The same install found the override text was misleading: it suggested prefixing
+`DR_LEG_FORCE=1 ` to the command, which reads as shell environment syntax but is
+really a text marker, and prefixing it to a `cd x && ...` chain would export it
+for `cd` alone. The message now says the marker may go anywhere, including as a
+trailing comment, and a test pins both forms.
+
+The mutation check found **two further defects on its first run**. One was a
 vacuous test: the wrapper-shell fixture lacked the `python -m pytest` text, so it
 passed without ever reaching the filter it was named after — it now asserts the
 fixture still matches the peer pattern before testing that the wrapper filter
