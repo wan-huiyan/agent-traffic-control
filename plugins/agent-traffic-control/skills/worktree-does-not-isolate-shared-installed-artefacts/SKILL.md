@@ -147,3 +147,9 @@ uninstall. Use your own tooling, especially when you are in a hurry.
 - `prove-test-failures-pre-existing-via-clean-worktree` — the right method for
   "mine or pre-existing?", and the one whose baseline this pattern can void.
 - `concurrent-session-checkout-clobbers-shared-worktree`, `using-git-worktrees`.
+- [`leg-guard`](../../hooks/leg-guard/) — **the machine is the shared artefact this
+  skill is about, and the one nothing isolates.** A worktree gives you a private
+  source tree and no private CPU, RAM or disk, so two sessions' test runs collide
+  however cleanly their trees are separated. This hook refuses to start a second
+  heavy local leg while a peer's is running, which is the only isolation available
+  for that particular shared artefact.

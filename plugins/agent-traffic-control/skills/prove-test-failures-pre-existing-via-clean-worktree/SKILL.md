@@ -81,4 +81,10 @@ zero regression risk.
   artefact and hand you a fictional failure set. Check provenance before comparing sets — the source
   paths a test binary compiles in are the cheapest tell. See
   `worktree-does-not-isolate-shared-installed-artefacts`.
+- **A baseline run that was KILLED is not a baseline.** Under contention a leg can be
+  stopped part-way and write no summary, which reads as "these tests failed" to the
+  comparison you are about to make — a fictional failure set from the other direction.
+  Record the exit status of the baseline run, not just its log, and re-run it if there
+  is none. [`leg-guard`](../../hooks/leg-guard/) prevents the collision that causes it
+  by refusing to start a leg while a peer's is running.
 - See also: `using-git-worktrees` (worktree mechanics), `concurrent-session-checkout-clobbers-shared-worktree`.

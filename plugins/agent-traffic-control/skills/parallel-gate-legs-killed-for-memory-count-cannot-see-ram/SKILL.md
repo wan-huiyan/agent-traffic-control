@@ -256,7 +256,7 @@ same suite concurrently anyway, and the session that lost a leg had not consulte
 this skill before starting its own. **A rule that every session must remember,
 and that costs nothing to skip, is not a rule.**
 
-The enforceable form is `hooks/leg-guard`: a `PreToolUse` hook on `Bash` that
+The enforceable form is [`leg-guard`](../../hooks/leg-guard/): a `PreToolUse` hook on `Bash` that
 refuses to start a heavy leg while a peer interpreter is running one, with an
 explicit `DR_LEG_FORCE=1` override so a session that genuinely must proceed does
 so deliberately and visibly rather than by forgetting. It counts LINES with
@@ -290,6 +290,11 @@ its owner will read as a test failure.
   will be replaced before it lands spends the slot for nothing.
 
 ## See Also
+
+- [`leg-guard`](../../hooks/leg-guard/) — this skill's rule, enforced. Install it if
+  more than one session ever runs local legs on your machine: it refuses to START a
+  second heavy leg instead of asking you to remember not to, which is the failure
+  recorded above. `DR_LEG_FORCE=1` anywhere in the command overrides it.
 
 - `worktree-does-not-isolate-shared-installed-artefacts` — the same shape one
   layer down: a worktree isolates the source tree and nothing else, so two
