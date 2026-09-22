@@ -209,6 +209,66 @@ killed yet. That is what the edge looks like while everything still appears to
 be working, which is why the reading has to be taken before starting a leg
 rather than after losing one.
 
+## The same signature WITHOUT memory pressure — 2026-09-22
+
+**A killed leg does not mean memory.** Read this before applying any remedy above,
+because the artefact is identical and the cause was not.
+
+Observed on the same laptop six days later: a `prototype` leg ended
+`exit=-15 collected=None passed=None failed=None 537.19s` — SIGTERM, no JUnit
+XML, no collected count. That is exactly what the memory kill looks like. But:
+
+    system-wide memory free   81%       (not tight)
+    Pages free                ~68 MB    (tight)
+    load averages             8.40  14.01  11.44
+    concurrent prototype runs 2 full suites, one with 4 xdist workers,
+                              plus a six-file subset and a four-leg loop
+                              = FOUR sessions in one suite
+
+**So the discriminator is not the signal number and not the free percentage.**
+`-15` is SIGTERM, which an OS memory kill does not normally send (`-9`), and the
+skill's own note already says a `-9` beside a timeout is not evidence of memory
+either. Both directions of that inference are wrong. What actually distinguishes
+them is a measured reading taken at the time — swap, `Pages free`, and whether
+anything else was competing for CPU.
+
+**The better detector was not the log at all.** `gate_receipt.py check` refused
+the run and named it precisely, where the leg table just showed a number:
+
+    REFUSED  4 problem(s)
+      [leg-red]               prototype exit=-15 failed=None error=None
+      [zero-collected]        prototype never reported a collected count
+      [deselected-unmeasured] no measured `deselected` count, the only witness
+                              that its test filter removed anything
+      [evidence-missing]      prototype recorded no JUnit XML
+
+Four independent statements that no measurement exists, rather than one ambiguous
+exit code. **If your harness writes a receipt, read its refusal before reading the
+log** — a leg table carries no evidence of its own completeness, and a green one
+can describe a tree you no longer have (see `working-tree-edits-stranded-on-squash-merge`
+for the neighbouring failure).
+
+### Why the advisory form of this rule did not hold
+
+This skill has said "test for ZERO, not for under N" and "put the guard inside the
+command that starts the leg" since 2026-09-17. On 2026-09-22 four sessions ran the
+same suite concurrently anyway, and the session that lost a leg had not consulted
+this skill before starting its own. **A rule that every session must remember,
+and that costs nothing to skip, is not a rule.**
+
+The enforceable form is `hooks/leg-guard`: a `PreToolUse` hook on `Bash` that
+refuses to start a heavy leg while a peer interpreter is running one, with an
+explicit `DR_LEG_FORCE=1` override so a session that genuinely must proceed does
+so deliberately and visibly rather than by forgetting. It counts LINES with
+parentage, collapses xdist workers onto their parent, excludes wrapper shells,
+matches case-insensitively, tests for zero, and fails OPEN on any internal error —
+every one of those directly from the measurements above.
+
+It does **not** judge memory, and says so in the block message: a process count is
+a CPU-and-contention rule and cannot see RAM. It prints free memory as context
+only. And it never kills a peer's leg, because killing one destroys a measurement
+its owner will read as a test failure.
+
 ## Notes
 
 - **The `16384` in those one-liners is one machine's page size, not a
@@ -221,6 +281,10 @@ rather than after losing one.
   reading (kernel log, swap and RSS figures) is evidence of a kill for memory.
 - **Deleting a peer's derived test artefacts to free memory is not a remedy** —
   a booted simulator or a live worktree may belong to a session mid-run.
+- **A blanket `pkill -f pytest` to clear contention is not a remedy.** It
+  destroys peers' measurements silently, and each owner then reads a corpse as a
+  red leg. If a leg genuinely must be stopped, telling its session costs less than
+  the wrong conclusion it will otherwise publish.
 - The mirror of this rule lives in the queue rather than the machine: the local
   test slot belongs to whoever is next to merge, because certifying a tree that
   will be replaced before it lands spends the slot for nothing.

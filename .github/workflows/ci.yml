@@ -51,3 +51,17 @@ jobs:
       # tests in this hook's first build could not, and each hid a real defect.
       - name: resume-gate hook — mutation check
         run: python3 plugins/agent-traffic-control/hooks/resume-gate/tests/mutation_check.py
+
+      # leg-guard ships executable code too, and is named here explicitly
+      # because CI runs test paths it is told about: a suite nobody names is
+      # not a gate. Its own mutation check found two real defects on the first
+      # run - a wrapper-shell fixture that passed without reaching the filter
+      # it was named after, and no test at all for the hook excluding its own
+      # process chain, which would have let it block itself on an idle machine.
+      - name: leg-guard hook — tests
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest plugins/agent-traffic-control/hooks/leg-guard/tests -q
+
+      - name: leg-guard hook — mutation check
+        run: python3 plugins/agent-traffic-control/hooks/leg-guard/tests/mutation_check.py
