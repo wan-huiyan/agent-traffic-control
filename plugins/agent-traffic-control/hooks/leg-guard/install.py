@@ -2,8 +2,19 @@
 """Install leg-guard into ~/.claude/settings.json (or --settings <path>).
 
     python3 install.py --check      say what is installed, change nothing
-    python3 install.py              install or update
-    python3 install.py --uninstall  remove
+    python3 install.py              copy the hook to ~/.claude/tools/leg-guard/ and
+                                    point settings.json at that copy
+    python3 install.py --uninstall  remove the entry, then the copy
+
+RUN A COPY, NEVER THE CHECKOUT
+------------------------------
+The first install pointed settings.json at leg_guard.py inside the git checkout
+under ~/Documents. A missing hook file makes Python exit 2 ("can't open file"),
+and 2 is exactly the code that BLOCKS a PreToolUse call -- so checking out a
+branch without the file, or iCloud evicting it, would have blocked every Bash
+call on the machine. The hook now runs from a copy in ~/.claude/tools/leg-guard/,
+where every other hook here lives, with a 10 s timeout. Re-run this after
+changing leg_guard.py; `--check` says whether the copy is CURRENT or STALE.
 
 THE MISTAKE THAT MAKES THIS SILENT AND TOTAL
 --------------------------------------------
@@ -46,10 +57,31 @@ SCRIPT = HERE / "leg_guard.py"
 # "BashOutput" and any future tool whose name contains it.
 MATCHER = "^Bash$"
 INTERPRETER = "/usr/bin/python3"   # absolute: hooks do not inherit a login PATH
+DEPLOY_DIR = Path.home() / ".claude" / "tools" / "leg-guard"
+TIMEOUT_S = 10   # caps any stall; a PreToolUse hook that times out does not block
 
 
-def _handler() -> dict:
-    return {"type": "command", "command": "%s %s" % (INTERPRETER, SCRIPT)}
+def _handler(deployed: Path) -> dict:
+    return {"type": "command", "command": "%s %s" % (INTERPRETER, deployed),
+            "timeout": TIMEOUT_S}
+
+
+def deploy(dest_dir: Path) -> Path:
+    """Copy the hook into place atomically, then read the bytes back."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / "leg_guard.py"
+    tmp = dest.with_suffix(".py.leg-guard-tmp")
+    tmp.write_bytes(SCRIPT.read_bytes())
+    tmp.replace(dest)
+    if dest.read_bytes() != SCRIPT.read_bytes():
+        sys.exit("refusing to continue: %s does not match %s" % (dest, SCRIPT))
+    return dest
+
+
+def copy_state(deployed: Path) -> str:
+    if not deployed.exists():
+        return "MISSING"
+    return "CURRENT" if deployed.read_bytes() == SCRIPT.read_bytes() else "STALE"
 
 
 def _is_ours(h: dict) -> bool:
@@ -65,7 +97,8 @@ def load(path: Path) -> dict:
         sys.exit("refusing to touch %s: it is not valid JSON (%s)" % (path, e))
 
 
-def install(settings: dict) -> tuple[dict, str]:
+def install(settings: dict, deployed: Path | None = None) -> tuple[dict, str]:
+    want = _handler(deployed or DEPLOY_DIR / "leg_guard.py")
     hooks = settings.setdefault("hooks", {})
     pre = hooks.setdefault("PreToolUse", [])
     for entry in pre:
@@ -73,12 +106,12 @@ def install(settings: dict) -> tuple[dict, str]:
         if any(_is_ours(h) for h in inner):
             for i, h in enumerate(inner):
                 if _is_ours(h):
-                    if h == _handler() and entry.get("matcher") == MATCHER:
+                    if h == want and entry.get("matcher") == MATCHER:
                         return settings, "already installed, unchanged"
-                    inner[i] = _handler()
+                    inner[i] = want
                     entry["matcher"] = MATCHER
                     return settings, "updated in place"
-    pre.append({"matcher": MATCHER, "hooks": [_handler()]})
+    pre.append({"matcher": MATCHER, "hooks": [want]})
     return settings, "installed"
 
 
@@ -114,25 +147,37 @@ def main() -> int:
     ap.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--uninstall", action="store_true")
+    ap.add_argument("--deploy-dir", default=str(DEPLOY_DIR))
     a = ap.parse_args()
     path = Path(os.path.expanduser(a.settings))
     settings = load(path)
+    deploy_dir = Path(os.path.expanduser(a.deploy_dir))
+    deployed = deploy_dir / "leg_guard.py"
 
     if a.check:
         print(describe(settings))
-        print("script: %s (%s)" % (SCRIPT, "present" if SCRIPT.exists() else "MISSING"))
+        print("deployed copy: %s  (%s)" % (copy_state(deployed), deployed))
+        print("source:        %s" % SCRIPT)
         return 0
 
-    if not SCRIPT.exists():
-        sys.exit("refusing to install: %s does not exist" % SCRIPT)
-
-    settings, what = (uninstall if a.uninstall else install)(settings)
+    if a.uninstall:
+        settings, what = uninstall(settings)
+    else:
+        if not SCRIPT.exists():
+            sys.exit("refusing to install: %s does not exist" % SCRIPT)
+        deploy(deploy_dir)                  # the copy exists BEFORE anything points at it
+        settings, what = install(settings, deployed)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".json.leg-guard-tmp")
     tmp.write_text(json.dumps(settings, indent=2) + "\n")
     tmp.replace(path)                       # atomic: never a half-written file
     print("%s -> %s" % (what, path))
     print(describe(load(path)))             # read it BACK, do not trust the write
+    if a.uninstall and deployed.exists():
+        deployed.unlink()                   # only after nothing points at it
+        print("removed %s" % deployed)
+    elif not a.uninstall:
+        print("deployed copy: %s  (%s)" % (copy_state(deployed), deployed))
     return 0
 
 

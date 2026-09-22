@@ -4,7 +4,7 @@ A `PreToolUse` hook on `Bash`. It refuses to start a heavy local test leg while
 another session's is already running, and names the peer rather than guessing.
 
     python3 install.py --check      # say what is installed, change nothing
-    python3 install.py              # install into ~/.claude/settings.json
+    python3 install.py              # copy to ~/.claude/tools/leg-guard/, point settings.json at it
     python3 install.py --uninstall
 
 ## Why it exists
@@ -59,6 +59,24 @@ hook that blocked everything would be far worse than one that blocked nothing,
 and exit codes other than 2 do not block anyway, so refusing could never be made
 reliable through failure. Internal errors allow the command and say why.
 
+**It reads the command the way a shell does.** Quoted text is one argument; a
+heredoc body is data unless it is fed to a shell; `$( )`, backticks, `<( )`,
+`bash -c` and `eval` strings are real commands and are read too; assignments,
+keywords and wrappers (`time`, `caffeinate`, `timeout`, `env`, `nice`, `nohup`)
+are stripped before asking what runs. The flat-text matcher it replaced blocked
+five harmless commands in one session and missed 14 of 22 real ways of starting
+a leg. Where the reader cannot follow — an unterminated quote, pathological
+nesting, a command over 1 MB — it answers "starts nothing": a guard that
+misfires gets switched off, so it errs quiet.
+
+**It runs from a copy, with a timeout.** `install.py` copies the hook to
+`~/.claude/tools/leg-guard/` and points settings.json there, with `"timeout": 10`.
+The first install ran it from the git checkout under iCloud-synced `~/Documents`;
+a missing hook file makes Python exit 2, and 2 is the code that BLOCKS, so a
+branch switch or an iCloud eviction would have blocked every Bash call on the
+machine. Re-run `install.py` after changing the hook; `--check` says whether
+the copy is CURRENT, STALE or MISSING.
+
 **It never kills anything and never judges memory.** A peer's leg is a peer's
 measurement. And a process count is a CPU-and-contention rule that cannot see
 RAM — it prints free memory as context and decides nothing on it.
@@ -75,32 +93,55 @@ the hook silently and completely.
 ## Tests
 
     python3 -m pytest tests/ -q
+    python3 tests/mutation_check.py
 
-Sixteen cases, each paired so an allow-case and a block-case differ in exactly
-one thing. Every guard has been mutation-checked: breaking it makes the suite
-fail. **Installing it live found a third defect the fixtures could not.** The first
-build matched the leg pattern as a bare substring, so it blocked an edit whose
-heredoc merely *contained* `-m pytest prototype` as test data. A guard that
-fires on a command *talking about* a leg gets switched off within a day, and
-then guards nothing. Matching is now anchored to command position — the leg
-invocation must begin a shell segment, after optional `FOO=bar` assignments and
-a leading `cd <path> &&` — with tests in both directions: four commands that
-only mention a leg must pass, six real invocation forms must still block.
+Fifty cases. The end-to-end ones run the hook on the interpreter `install.py`
+writes into settings.json (`/usr/bin/python3`, 3.9 on the machine this was
+written for), not on the one running pytest — they differed, and a hook that
+only worked on the newer one would have passed every test and crashed live,
+where a crash fails open and switches the guard off unnoticed. The mutation
+check breaks each of 23 guards in turn and fails if the suite does not notice.
+It rewrites `leg_guard.py` while it runs, which is one more reason the live hook
+runs from a copy.
 
-The same install found the override text was misleading: it suggested prefixing
-`DR_LEG_FORCE=1 ` to the command, which reads as shell environment syntax but is
-really a text marker, and prefixing it to a `cd x && ...` chain would export it
-for `cd` alone. The message now says the marker may go anywhere, including as a
-trailing comment, and a test pins both forms.
+**Every allow-case is paired with a block-case differing in one thing**, so a
+guard that simply stops blocking cannot pass.
 
-The mutation check found **two further defects on its first run**. One was a
-vacuous test: the wrapper-shell fixture lacked the `python -m pytest` text, so it
-passed without ever reaching the filter it was named after — it now asserts the
-fixture still matches the peer pattern before testing that the wrapper filter
-excludes it. The other was a missing test entirely: nothing covered the hook
-excluding its own process chain, so it could have counted itself as a peer and
-blocked every leg on an idle machine.
+**History, because each step was found live, not in review of a diff:**
 
-Like `resume-gate`'s check since v1.27.0, it refuses rather than reporting a
-vacuous pass when pytest is unavailable, by re-running the suite on the restored
-file — verified under an interpreter with pytest blocked.
+- The first build matched the leg pattern as a bare substring and blocked an
+  edit whose heredoc merely *contained* `-m pytest prototype` as test data.
+- The second anchored the match to the start of a shell segment, but cut the
+  segments without knowing about quotes or heredocs. On 2026-09-22 it blocked
+  five commands in one session: heredocs writing documents that quoted the gate
+  commands, a `gh pr edit` whose body quoted the receipt runner, and a read-only
+  `ps | grep` whose QUOTED `|` became a command boundary. It also missed 14 of
+  22 real invocation forms. That is what the shell reader replaced.
+- A three-reviewer pass on the reader found that nested `eval $( )` made the
+  work triple per level (182 characters: 21.6 s, 776 MB) — fixed by reading each
+  distinct inner text once — plus a `py.test` spelling the fast path never let
+  through, `sh -s -- args`, CRLF input handled only by two quirks cancelling,
+  one undecodable byte in `ps` output silently switching the guard off, and the
+  missing-file exit 2 above. Each is pinned in `tests/test_review_findings.py`
+  or `tests/test_install.py`.
+- The override text first suggested prefixing `DR_LEG_FORCE=1 `, which reads as
+  shell syntax but is a text marker; it now says anywhere, including a comment.
+- The mutation check's first run found a vacuous wrapper-shell test and no test
+  at all for the hook excluding its own process chain.
+
+**Known limits, deliberately not handled** (the guard errs quiet):
+
+- A leg named only at run time — `xargs -I{} ... pytest {}` fed a suite name,
+  or `eval "$(cat <<EOF ... EOF)"` — cannot be seen by reading the text.
+- Wrappers outside the list above (`watch`, `parallel`, `stdbuf`, `script`,
+  `unbuffer`, `xargs`) are not stripped, so a leg behind them is missed.
+- A command over 1 MB is not read.
+- `DR_LEG_FORCE=1` counts anywhere in the text, including inside data, so a
+  document that mentions it lets a real leg in the same call through. Matching it
+  only in a real comment would need the reader to keep comments, which it drops.
+- bash runs the lines before a later syntax error; the reader answers "starts
+  nothing" for the whole unparseable command.
+
+Like `resume-gate`'s check since v1.27.0, the mutation check refuses rather than
+reporting a vacuous pass when pytest is unavailable, by re-running the suite on
+the restored file.

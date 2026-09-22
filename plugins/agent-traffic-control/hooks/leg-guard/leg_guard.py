@@ -91,6 +91,8 @@ _KEYWORDS = frozenset(("{", "}", "!", "if", "then", "elif", "else", "do", "done"
                        "fi", "while", "until"))
 _SHELLS = frozenset(("bash", "sh", "zsh", "dash", "ksh"))
 _MAX_DEPTH = 64          # nested substitutions or `sh -c` strings; past this, fail open
+_MAX_CHARS = 1000000     # a longer command is answered "starts nothing" unread
+_FAST_WORDS = ("pytest", "py.test", "gate_receipt")   # no leg without one of these
 
 
 class _Unparseable(Exception):
@@ -212,10 +214,10 @@ class _Parser(object):
     def _delimiter(self, i):
         """Read a heredoc delimiter from `i`: (word, was_quoted, next index)."""
         t, n = self.t, self.n
-        while i < n and t[i] in " \t":
+        while i < n and t[i] in " \t\r":
             i += 1
         buf, quoted = [], False
-        while i < n and t[i] not in " \t\n;&|<>()":
+        while i < n and t[i] not in " \t\r\n;&|<>()":
             c = t[i]
             if c in "'\"":
                 j = t.find(c, i + 1)
@@ -241,6 +243,7 @@ class _Parser(object):
                 j = t.find("\n", i)
                 line = t[i:] if j < 0 else t[i:j]
                 i = n if j < 0 else j + 1
+                line = line.rstrip("\r")
                 if (line.lstrip("\t") if strip_tabs else line) == delim:
                     break
                 lines.append(line)
@@ -298,7 +301,7 @@ class _Parser(object):
             elif c == "#" and not self._in_word:            # a comment, to end of line
                 j = t.find("\n", i)
                 i = n if j < 0 else j
-            elif c in " \t":
+            elif c in " \t\r":
                 self._end_word()
                 i += 1
             elif c == "\n":
@@ -401,14 +404,37 @@ def _dash_c_string(args):
 
 
 def _reads_stdin(args):
-    """True if a shell with these arguments reads its script from stdin."""
-    return all(a.startswith(("-", "+")) for a in args)
+    """True if a shell with these arguments reads its script from stdin: it
+    has no script-file operand, or `-s` says its operands are positional
+    parameters (`sh -s -- a b <<EOF`)."""
+    k = 0
+    while k < len(args):
+        a = args[k]
+        if a in ("-o", "-O", "+o", "+O"):
+            k += 2
+        elif a.startswith("-") and not a.startswith("--") and "s" in a[1:]:
+            return True
+        elif a.startswith(("-", "+")):
+            k += 1
+        else:
+            return False                                # `bash script.sh`
+    return True
 
 
-def command_argvs(cmd, depth=0):
+def command_argvs(cmd, depth=0, memo=None):
     """Every command a shell would run for `cmd`, each as an argv with its
     prefix stripped -- including those inside substitutions, in `sh -c` and
-    `eval` strings, and in heredocs fed to a shell. Raises _Unparseable."""
+    `eval` strings, and in heredocs fed to a shell. Raises _Unparseable.
+
+    `memo` maps each inner text already read in this call to its result. It is
+    the whole defence against nesting: a substitution's commands are collected
+    by the enclosing parse AND its text is read again inside every enclosing
+    `eval` / `sh -c` / heredoc-to-shell string, so without it the work grew 2-3x
+    per level (182 characters took 21.6 s and 776 MB on 2026-09-22)."""
+    if memo is None:
+        memo = {}
+    if cmd in memo:
+        return memo[cmd]
     if depth > _MAX_DEPTH:
         raise _Unparseable("nested too deep")
     parsed = []
@@ -431,9 +457,10 @@ def command_argvs(cmd, depth=0):
                 inner = [body for body, _quoted in c.heredocs]
         for text in inner:
             try:
-                argvs.extend(command_argvs(text, depth + 1))
+                argvs.extend(command_argvs(text, depth + 1, memo))
             except _Unparseable:
                 pass                        # a broken inner string runs nothing
+    memo[cmd] = argvs
     return argvs
 
 
@@ -475,8 +502,10 @@ def _is_leg(argv):
 
 def starts_a_leg(cmd: str) -> bool:
     """True only if the shell would actually RUN a heavy leg for `cmd`."""
-    if "pytest" not in cmd and "gate_receipt" not in cmd:
+    if not any(w in cmd for w in _FAST_WORDS):
         return False                        # the fast path: nearly every Bash call
+    if len(cmd) > _MAX_CHARS:
+        return False                        # reading it would stall the call; err quiet
     try:
         argvs = command_argvs(cmd)
     except _Unparseable:
@@ -498,7 +527,7 @@ OVERRIDE = "DR_LEG_FORCE=1"
 def _ps_lines() -> list[tuple[int, int, str, str]]:
     out = subprocess.run(
         ["ps", "-axo", "pid,ppid,etime,command"],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True, text=True, errors="replace", timeout=10,
     ).stdout.splitlines()
     rows = []
     for line in out[1:]:
@@ -577,8 +606,9 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except Exception:
         return 0                                   # fail open: not our business
-    cmd = (payload.get("tool_input") or {}).get("command") or ""
-    if not cmd or not starts_a_leg(cmd):
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    cmd = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if not isinstance(cmd, str) or not cmd or not starts_a_leg(cmd):
         return 0                                   # not a heavy leg
 
     if OVERRIDE in cmd:
