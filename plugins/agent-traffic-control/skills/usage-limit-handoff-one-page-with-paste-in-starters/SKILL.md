@@ -16,7 +16,7 @@ author: wan-huiyan
 A coordinator holding many workstreams (a pull request queue, background test runners, peer
 sessions, grants on a shared machine) hits its account's usage limit. A different account picks
 up. The new account has none of the old conversation, and the user is the only bridge between
-them. Six handovers in a row went the same way:
+them. Handovers went wrong the same few ways, repeatedly:
 
 1. **The handover arrived too late.** Written at the limit, it was cut off mid-list, and the last
    workstreams had no entry at all.

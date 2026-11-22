@@ -373,6 +373,8 @@ git worktree remove /path/to/worktree   # never --force; it refuses on uncommitt
 only copy of a result), so read the `!!` lines from step 3 first. Delete a duplicate clone (not a
 worktree) only after all four checks come back empty.
 
+After squash merges, the last two commands of step 3 list work that DID land, because squashed commits are never ancestors of main. Confirm those by content instead: `gh pr list --head <branch> --state merged`, or `verify-a-squash-merge-by-content-not-lineage`.
+
 ## Reference-only siblings in this toolkit
 
 These carry `disable-model-invocation: true`. They never appear in the skill

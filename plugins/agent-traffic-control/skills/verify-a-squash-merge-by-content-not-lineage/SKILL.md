@@ -87,8 +87,8 @@ Blind `rm`, `git clean -fd` or `reset --hard` destroys that silently.
 
 - `git branch -d <merged-branch>` refuses because the branch's commits are not ancestors of main;
   `-D` is needed once you have confirmed the content landed.
-- `git diff origin/main --stat` from the old branch shows changes after the squash. That compares
-  commits, not what landed; use `git diff origin/main -- .` for real content differences.
+- `git diff origin/main --stat` from the old branch shows changes after the squash. It also
+  shows everything main gained since; diff only your own paths: `git diff origin/main -- <your files>`.
 
 ## Context / Trigger Conditions
 

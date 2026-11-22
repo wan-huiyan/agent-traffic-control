@@ -36,8 +36,8 @@ disable-model-invocation: true
 
 The main-session Bash tool now says: "`cd` carries to the next call only in the main session, if the command succeeds and ends inside the working directories. Outside them the shell returns to the start folder; otherwise it stays where it was." So:
 
-- A `cd` to a path **inside the project** (for example `.claude/worktrees/track-A`) still persists, so the nested-worktree trap and the `git diff -- <path>` empty-pathspec trap below still happen exactly as described.
-- A `cd` to a path **outside** the project (a worktree under `/tmp`, or `../sibling`) no longer sticks: the next call starts back in the start folder. Relative paths used after such a `cd` resolve against the start folder, not the worktree. Chain `cd <abs-path> && cmd` in one call, or pass absolute paths.
+- A `cd` to a path **inside the working directories** (the project and any added folders) (for example `.claude/worktrees/track-A`) still persists, so the nested-worktree trap and the `git diff -- <path>` empty-pathspec trap below still happen exactly as described.
+- A `cd` to a path **outside** them (a worktree under `/tmp`, or `../sibling`) no longer sticks: the next call starts back in the start folder. Relative paths used after such a `cd` resolve against the start folder, not the worktree. Chain `cd <abs-path> && cmd` in one call, or pass absolute paths.
 - Wherever the text below quotes the older line "The working directory persists between commands", read it as the narrower rule above.
 
 ## Problem
@@ -187,6 +187,6 @@ The tell is the **contradiction**: `git show --stat` / `git diff A B --stat` (no
 
 ## References
 
-- Claude Code Bash tool docstring: "The working directory persists between commands, but shell state does not."
+- Claude Code Bash tool docstring (before Nov 2026; see "Current behaviour" above): "The working directory persists between commands, but shell state does not."
 - Related skill: [subagent-bash-cd-wrong-worktree](../subagent-bash-cd-wrong-worktree/SKILL.md) — the inverse failure mode in subagent shells.
 - Related skill: `superpowers:using-git-worktrees` — general worktree workflow.

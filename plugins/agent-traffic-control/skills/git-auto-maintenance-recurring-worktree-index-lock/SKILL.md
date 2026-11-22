@@ -101,7 +101,7 @@ function / array), never a string variable.
   skill is for `fatal: unable to read <sha>` / cache-tree corruption from a
   crashed async **post-commit hook**; THIS skill is for a recurring **lock file**
   from auto-**maintenance**. Same family (worktree + background git), different
-  cause + different fix. See also: `recover-from-an-async-post-commit-hook`.
+  cause + different fix.
 - You can also disable it repo-wide for the session
   (`git config maintenance.auto false; git config gc.auto 0`) but per-command
   inline flags are safer (don't mutate shared config other worktrees read).

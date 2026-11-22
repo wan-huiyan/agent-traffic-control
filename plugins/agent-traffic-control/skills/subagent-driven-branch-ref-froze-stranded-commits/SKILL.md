@@ -29,9 +29,8 @@ description: |
   HEAD, so every per-task diagnostic looked correct. `git push <branch>`
   ships the branch ref — i.e. the truncated tree. The squash captures only
   the truncated portion. Sister to `reland-work-that-missed-a-squash-merge`
-  (uncommitted Edit() — different mechanism, same symptom class) and
-  `reland-work-that-missed-a-squash-merge` (commits pushed after merge —
-  different timing). Distinct from `pr-hijack-via-stale-worktree-branch-ref`
+  (uncommitted edits, or commits pushed after the merge — different mechanism
+  and timing, same symptom class). Distinct from `pr-hijack-via-stale-worktree-branch-ref`
   (which is about overwriting a different branch upstream).
 author: Claude Code
 version: 1.0.1

@@ -410,6 +410,7 @@ current** (status flipped, PR chip filled, text not the pre-session wording).
 
 ## Verification
 
+- For a stacked or sibling pull request, compare where B was cut with where A landed: `gh pr view <B> --json baseRefOid` against `gh pr view <A> --json mergeCommit`. If B's base is older than A's merge, B was cut before A landed and must be checked.
 - `git diff --diff-filter=D --name-only origin/main...HEAD` is empty or lists only intended
   deletions; `git diff --stat origin/main...HEAD` lists only intended files; GitHub's "files changed"
   matches (it is computed the same way).

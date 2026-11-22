@@ -15,8 +15,8 @@ author: wan-huiyan
 
 Agents read notes only when they think to look, and a note is easy to skim past under pressure.
 In one project, a memory note about stating facts from a stale copy existed, and the mistake still
-happened four times in one session while the memory index pointed at that note. Other rules held
-only once a hook enforced them:
+happened four times in one session while the memory index pointed at that note. Other rules were
+broken repeatedly until a hook enforced them:
 
 - shell loops over an unquoted variable that splits into words;
 - running local tests while a peer held the shared machine for a quiet window;

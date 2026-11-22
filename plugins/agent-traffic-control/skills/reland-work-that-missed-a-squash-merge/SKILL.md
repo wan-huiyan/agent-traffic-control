@@ -43,7 +43,7 @@ iterations. GitHub does not re-apply a closed branch's later commits onto main. 
 
 1. `gh pr view N --json state` returns `MERGED`;
 2. `git show <merge-commit> --stat` has insertion counts matching only your first commits;
-3. `git log origin/main..<closed-branch> --oneline` lists commits that are not on main;
+3. `gh pr view N --json commits` lists fewer commits than the closed branch holds (do not use `git log origin/main..<branch>`: after any squash it lists every commit, landed or not);
 4. the closed branch still exists locally and/or on GitHub, holding them.
 
 ### Variant 3 — a new commit written on the branch after the merge

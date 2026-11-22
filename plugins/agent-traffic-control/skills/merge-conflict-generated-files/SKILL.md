@@ -263,7 +263,5 @@ These carry `disable-model-invocation: true`. They never appear in the skill
 listing and the Skill tool refuses them, so the only way in is to open the file
 with Read when one of these matches what you are looking at.
 
-- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — a multi-commit rebase stalls mid-replay in a repo with a background post-commit hook
-- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — `git add -u` plus `--amend` plus force-push rolls thousands of unrelated deletions into your commit
-- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — `git commit --amend` silently rewrote the hook's commit instead of yours
+- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — a background post-commit hook stalls a multi-commit rebase, sweeps thousands of unrelated deletions into a `git add -u` amend, or makes `--amend` rewrite the hook's commit instead of yours
 - [`clean-merge-lands-line-guard-on-a-value-neither-branch-predicted`](../clean-merge-lands-line-guard-on-a-value-neither-branch-predicted/SKILL.md) — the no-conflict sibling: both branches re-aim the same line-number citation and the merged tree matches neither
