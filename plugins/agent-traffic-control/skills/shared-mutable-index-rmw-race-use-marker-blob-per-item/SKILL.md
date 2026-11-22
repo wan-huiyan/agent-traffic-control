@@ -5,8 +5,8 @@ description: |
   Designing a shared "who is active / recent items" index that concurrent producers write to: one
   mutable list silently loses entries. Write one marker per item.
 author: Claude Code
-version: 1.1.0
-date: 2026-06-09
+version: 1.1.1
+date: 2026-11-22
 ---
 # Shared mutable index → use a marker blob/row per item (not a read-modify-written list)
 
@@ -149,3 +149,10 @@ an 8-card cap. It also matched the codebase, which already stored `results_<meth
   for the threat model.
 - Marker bodies can stay empty (the key *is* the data). If you need a tiny bit of metadata, a few
   bytes in the body is fine — but resist re-creating a shared mutable structure inside it.
+
+## Reference-only siblings in this toolkit
+
+These carry `disable-model-invocation: true`, so open them with Read when one matches.
+
+- [`peer-window-grant-copy-the-parser-and-stay-quiet-while-live`](../peer-window-grant-copy-the-parser-and-stay-quiet-while-live/SKILL.md): granting a peer agent a window on a shared host through a text mailbox its controller parses. Copy the parser's labels, and write nothing while the window is live.
+- [`running-job-queue-ignores-in-place-edits`](../running-job-queue-ignores-in-place-edits/SKILL.md): a loop reading a queue file through a held descriptor never sees a `sed -i` edit, and a rebuild that counts lines can drop a job.
