@@ -215,7 +215,7 @@ debug-reload caught the file change).
   pattern: Cloud Run / Docker build context = local filesystem, so
   deploying from worktree A bakes A's stale state into the image.
   This skill's localhost-Flask analogue.
-- `worktree-index-corrupt-async-post-commit-hook` — different worktree
+- `recover-from-an-async-post-commit-hook` — different worktree
   trap: corrupt index after async post-commit hooks. Use that skill
   when `git status` itself errors with `unable to read <sha>`.
 

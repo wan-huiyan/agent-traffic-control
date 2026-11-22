@@ -25,12 +25,20 @@ description: |
   the repo root. Tell: a pathspec-filtered git command comes back empty yet `--stat`
   / `git show <rev>:<path>` disagree → suspect cwd drift, not the commit/branch/range.**
 author: Claude Code
-version: 1.2.0
-date: 2026-07-02
+version: 1.3.0
+date: 2026-11-22
 disable-model-invocation: true
 ---
 
 # Main-agent Bash cwd persistence → nested worktrees at wrong path
+
+## Current behaviour (refreshed 2026-11-22)
+
+The main-session Bash tool now says: "`cd` carries to the next call only in the main session, if the command succeeds and ends inside the working directories. Outside them the shell returns to the start folder; otherwise it stays where it was." So:
+
+- A `cd` to a path **inside the project** (for example `.claude/worktrees/track-A`) still persists, so the nested-worktree trap and the `git diff -- <path>` empty-pathspec trap below still happen exactly as described.
+- A `cd` to a path **outside** the project (a worktree under `/tmp`, or `../sibling`) no longer sticks: the next call starts back in the start folder. Relative paths used after such a `cd` resolve against the start folder, not the worktree. Chain `cd <abs-path> && cmd` in one call, or pass absolute paths.
+- Wherever the text below quotes the older line "The working directory persists between commands", read it as the narrower rule above.
 
 ## Problem
 
@@ -181,4 +189,4 @@ The tell is the **contradiction**: `git show --stat` / `git diff A B --stat` (no
 
 - Claude Code Bash tool docstring: "The working directory persists between commands, but shell state does not."
 - Related skill: [subagent-bash-cd-wrong-worktree](../subagent-bash-cd-wrong-worktree/SKILL.md) — the inverse failure mode in subagent shells.
-- Related skill: [using-git-worktrees](../using-git-worktrees/) — general worktree workflow.
+- Related skill: `superpowers:using-git-worktrees` — general worktree workflow.

@@ -13,7 +13,7 @@ description: |
   keyword per issue ("Closes #447. Closes #448. Closes #449.") in the
   PR body BEFORE merging, or (b) post-merge, run `gh issue close $N
   --comment "Closed by PR #M (squash-merge auto-close caught only one)"`
-  for each leftover. Different from `pr-followup-commit-stranded-after-squash`
+  for each leftover. Different from `reland-work-that-missed-a-squash-merge`
   (which covers stranded COMMITS, not stranded ISSUES). Saves a "why are
   my issues still open after merging the fix?" detour.
 author: Claude Code
@@ -130,7 +130,7 @@ Recovered with the loop above — 6 `gh issue close` calls total, ~5 seconds. Fu
 
 ## Notes
 
-- **Sibling skill: `pr-followup-commit-stranded-after-squash`** — covers stranded *commits* (you pushed more after the squash collapsed). Different mechanism, same family of "squash quietly drops things."
+- **Sibling skill: `reland-work-that-missed-a-squash-merge`** — covers stranded *commits* (you pushed more after the squash collapsed). Different mechanism, same family of "squash quietly drops things."
 
 - **Why the parser does this:** GitHub's "linked issues" feature was originally one-issue-per-PR. The keyword-to-comma extension came later and didn't fully generalise. Treating "Closes #X, #Y" as "Closes #X" + "reference to #Y" preserves backward compatibility with PR descriptions that mention related issues without intending to close them.
 

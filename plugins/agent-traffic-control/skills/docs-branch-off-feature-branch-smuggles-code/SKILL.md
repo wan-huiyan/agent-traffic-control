@@ -18,7 +18,7 @@ description: |
   feature code under a "docs" title — bypassing the planned
   merge-and-deploy gate for the feature PR, and silently deploying
   if cloudbuild.yaml auto-fires on main push. Sister to
-  `stale-base-pr-silently-reverts-upstream-content` (which is about
+  `check-a-stale-branch-is-not-undoing-newer-main-work` (which is about
   PR-vs-PR overlap on the same files); this skill covers the
   branch-base trap that smuggles ENTIRE commits into the docs PR.
   Sister to `pr-hijack-via-stale-worktree-branch-ref` (which is about
@@ -400,7 +400,7 @@ on PR #90 where they belong, awaiting their own merge gate.
 
 ## References
 
-- Sister: `stale-base-pr-silently-reverts-upstream-content` —
+- Sister: `check-a-stale-branch-is-not-undoing-newer-main-work` —
   parallel-PR overlap on same files; different mechanism.
 - Sister: `pr-hijack-via-stale-worktree-branch-ref` — worktree
   ref drift; different mechanism.

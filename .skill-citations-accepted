@@ -154,3 +154,19 @@ vite-hmr-transient-console-errors-verify-on-fresh-reload             # unpublish
 voltagent-reviewer-no-write-tool                                     # unpublished note; not in this repo's history nor any public repo (checked 2026-08-12)
 worktree-plan-b-brief-runner                                         # unpublished note; not in this repo's history nor any public repo (checked 2026-08-12)
 gpt-6-astra  # OpenAI model identifier in dated dispatch example; not a skill citation
+using-git-worktrees  # retired 2026-11-22: a stale modified copy of superpowers:using-git-worktrees (use that); its duplicate-checkout cleanup section moved into git-worktree. Still named in the README version history and CONTRIBUTING.
+worktree-index-corrupt-async-post-commit-hook  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+git-add-u-after-async-post-commit-hook  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+git-amend-hits-async-post-commit-hook-commit  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+git-rebase-stalls-async-post-commit-hook  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+async-post-commit-hook-commit-orphaned-by-squash-merge  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+async-doc-hook-autodocs-worktree-locks-branch-checkout  # merged into recover-from-an-async-post-commit-hook on 2026-11-22; still named in the README version history
+stale-base-pr-silently-reverts-upstream-content  # merged into check-a-stale-branch-is-not-undoing-newer-main-work on 2026-11-22; still named in the README version history
+pr-from-stale-branch-silently-reverts-newer-main-files  # merged into check-a-stale-branch-is-not-undoing-newer-main-work on 2026-11-22; still named in the README version history
+stale-base-drops-rows-from-a-shared-ledger  # merged into check-a-stale-branch-is-not-undoing-newer-main-work on 2026-11-22; still named in the README version history
+worktree-stale-local-main-ref-inflates-pr-diff  # merged into check-a-stale-branch-is-not-undoing-newer-main-work on 2026-11-22; still named in the README version history
+working-tree-edits-stranded-on-squash-merge  # merged into reland-work-that-missed-a-squash-merge on 2026-11-22; still named in the README version history
+pr-followup-commit-stranded-after-squash  # merged into reland-work-that-missed-a-squash-merge on 2026-11-22; still named in the README version history
+squash-merge-content-preservation-vs-ancestor-check  # merged into verify-a-squash-merge-by-content-not-lineage on 2026-11-22; still named in the README version history
+gh-pr-merge-squash-stdout-shows-sibling-files-as-created  # merged into verify-a-squash-merge-by-content-not-lineage on 2026-11-22; still named in the README version history
+git-pull-after-squash-merge  # merged into verify-a-squash-merge-by-content-not-lineage on 2026-11-22; still named in the README version history

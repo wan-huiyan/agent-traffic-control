@@ -346,6 +346,33 @@ cd $(git rev-parse --show-toplevel)
 - Shared git objects for efficiency
 - Much faster than cloning or stashing/switching
 
+## Diagnosing duplicate checkouts before deleting one
+
+Over months, sessions leave several clones and worktrees of the same repository. Before removing
+one, prove it holds no unique work:
+
+```bash
+# 1. Same repository? Compare remotes.
+git -C /path/to/dir1 remote -v
+git -C /path/to/dir2 remote -v
+
+# 2. Which are worktrees of which?
+git -C /path/to/primary worktree list
+
+# 3. No unique work?
+git -C /path/to/suspect status --short --ignored          # uncommitted AND ignored files
+git -C /path/to/suspect stash list                        # stashed work
+git -C /path/to/suspect log --oneline origin/main..HEAD   # unpushed commits
+git -C /path/to/suspect branch --no-merged origin/main    # unmerged branches
+
+# 4. Remove
+git worktree remove /path/to/worktree   # never --force; it refuses on uncommitted work
+```
+
+`git worktree remove` deletes ignored files without asking (an ignored output folder can be the
+only copy of a result), so read the `!!` lines from step 3 first. Delete a duplicate clone (not a
+worktree) only after all four checks come back empty.
+
 ## Reference-only siblings in this toolkit
 
 These carry `disable-model-invocation: true`. They never appear in the skill
@@ -355,10 +382,9 @@ with Read when one of these matches what you are looking at.
 - [`main-bash-cwd-persists-nested-worktree`](../main-bash-cwd-persists-nested-worktree/SKILL.md) — a worktree got created at the wrong filesystem path because the main agent's bash cwd persisted
 - [`shell-pinned-to-deleted-worktree-cwd-blocks-git`](../shell-pinned-to-deleted-worktree-cwd-blocks-git/SKILL.md) — every shell command now fails `Unable to read current working directory` after a worktree was removed
 - [`git-auto-maintenance-recurring-worktree-index-lock`](../git-auto-maintenance-recurring-worktree-index-lock/SKILL.md) — `index.lock: File exists` keeps coming back after you delete it
-- [`worktree-index-corrupt-async-post-commit-hook`](../worktree-index-corrupt-async-post-commit-hook/SKILL.md) — `fatal: unable to read <sha>` in worktree B right after committing in worktree A
+- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — a background post-commit hook breaks the next git command: unreadable objects in a sibling worktree, a branch locked by an autodocs worktree, a stalled rebase, an amend that rewrote the hook's commit
 - [`worktree-does-not-isolate-shared-installed-artefacts`](../worktree-does-not-isolate-shared-installed-artefacts/SKILL.md) — a worktree isolates the source tree and nothing else — venvs, caches and installed packages stay shared
 - [`worktree-historical-test-replay-missing-dirs`](../worktree-historical-test-replay-missing-dirs/SKILL.md) — `pytest exit 4` replaying tests in a worktree checked out at an old commit
 - [`verify-pytest-imports-worktree-not-primary-checkout`](../verify-pytest-imports-worktree-not-primary-checkout/SKILL.md) — an editable install makes `import <pkg>` resolve to the primary checkout, not your worktree
 - [`flask-debug-cross-worktree-edit-stale`](../flask-debug-cross-worktree-edit-stale/SKILL.md) — the dev server keeps serving the old template after you edited it in another worktree
-- [`async-doc-hook-autodocs-worktree-locks-branch-checkout`](../async-doc-hook-autodocs-worktree-locks-branch-checkout/SKILL.md) — `'<branch>' is already used by worktree at .../autodocs-<name>` from a background docs hook
 - [`parallel-gate-legs-killed-for-memory-count-cannot-see-ram`](../parallel-gate-legs-killed-for-memory-count-cannot-see-ram/SKILL.md) — a worktree does not isolate the machine: two sessions' test legs collide on memory while the heavy-leg count reads inside its limit

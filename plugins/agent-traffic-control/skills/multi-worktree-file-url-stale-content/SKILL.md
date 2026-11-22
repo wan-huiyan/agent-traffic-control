@@ -138,4 +138,4 @@ User confirmed: the Feature Shifts card was gone in the browser.
 - `worktree-outer-ls-mistaken-for-main-state` — variant where the user runs `ls` outside any worktree and thinks they see main state
 - `flask-debug-cross-worktree-edit-stale` — variant where a running Flask debug server reads the wrong worktree
 - `gh-pr-merge-worktree-checkout-trap` — companion footgun on `gh pr merge --delete-branch` in multi-worktree repos
-- `using-git-worktrees` — general worktree hygiene skill
+- `superpowers:using-git-worktrees` — general worktree hygiene skill

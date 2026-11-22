@@ -236,5 +236,5 @@ were intact in the **worktree** the whole time. Running `git status -sb` *from t
   misses dirs that are only on newer commits. Same "outer-vs-current" frame inversion.
 - `flask-debug-cross-worktree-edit-stale` — Flask reloader picks up edits from another worktree
   via shared module imports. Sibling problem at the runtime layer.
-- `using-git-worktrees` — broader worktree workflow guidance, doesn't focus on the
+- `superpowers:using-git-worktrees` — broader worktree workflow guidance, doesn't focus on the
   filesystem-walk trap.

@@ -119,7 +119,7 @@ the freed lock first; loop 3–5× with a `sleep 2`). Removing it unblocks *both
 after both checks pass — deleting a lock held by a live git process corrupts the index.
 
 - Prevention: when starting isolated feature work, create a worktree *first*
-  (the `using-git-worktrees` skill). Shared-directory work is only safe for a
+  (the `superpowers:using-git-worktrees` skill). Shared-directory work is only safe for a
   single session.
 - A native `EnterWorktree` tool can enter an already-created worktree by `path`.
 - Nothing is permanently lost even if the other session commits your strays —
@@ -127,5 +127,5 @@ after both checks pass — deleting a lock held by a live git process corrupts t
 
 ## References
 
-- `using-git-worktrees` — create an isolated workspace up front.
+- `superpowers:using-git-worktrees` — create an isolated workspace up front.
 - `git reflog` is the source of truth for "who switched the branch."

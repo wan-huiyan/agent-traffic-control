@@ -284,7 +284,7 @@ gh pr diff <NEW_PR> | head -50
   state=MERGED and move on" — this skill extends that advice with: if you
   also need to clean up the branch AND a stacked PR depends on it, follow
   Pattern A or B above instead of using the API delete directly.
-- **Sister skill — different problem:** `pr-followup-commit-stranded-after-squash`
+- **Sister skill — different problem:** `reland-work-that-missed-a-squash-merge`
   covers commits pushed after PR squash-merge — different failure mode
   (stranded commits vs auto-closed PR).
 

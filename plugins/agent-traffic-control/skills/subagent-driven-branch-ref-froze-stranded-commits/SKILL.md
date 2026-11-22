@@ -28,9 +28,9 @@ description: |
   updates the named branch. `git log` (without an explicit ref) walks from
   HEAD, so every per-task diagnostic looked correct. `git push <branch>`
   ships the branch ref — i.e. the truncated tree. The squash captures only
-  the truncated portion. Sister to `working-tree-edits-stranded-on-squash-merge`
+  the truncated portion. Sister to `reland-work-that-missed-a-squash-merge`
   (uncommitted Edit() — different mechanism, same symptom class) and
-  `pr-followup-commit-stranded-after-squash` (commits pushed after merge —
+  `reland-work-that-missed-a-squash-merge` (commits pushed after merge —
   different timing). Distinct from `pr-hijack-via-stale-worktree-branch-ref`
   (which is about overwriting a different branch upstream).
 author: Claude Code
@@ -263,10 +263,8 @@ publishing; a local test pass alone does not prove the remote has the same tree.
 ## References
 
 - Sister skills:
-  [`working-tree-edits-stranded-on-squash-merge`](../working-tree-edits-stranded-on-squash-merge/SKILL.md)
-  (uncommitted Edit() — different mechanism),
-  [`pr-followup-commit-stranded-after-squash`](../pr-followup-commit-stranded-after-squash/SKILL.md)
-  (commits pushed after merge — different timing),
+  [`reland-work-that-missed-a-squash-merge`](../reland-work-that-missed-a-squash-merge/SKILL.md)
+  (uncommitted edits, or commits pushed after the merge — different mechanism and timing),
   [`pr-hijack-via-stale-worktree-branch-ref`](../pr-hijack-via-stale-worktree-branch-ref/SKILL.md)
   (overwriting someone else's branch upstream — different problem entirely).
 - `superpowers:subagent-driven-development` skill — where this pattern

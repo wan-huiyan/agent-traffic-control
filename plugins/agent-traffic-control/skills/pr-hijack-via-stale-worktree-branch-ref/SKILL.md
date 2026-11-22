@@ -206,7 +206,7 @@ after subsequent operations. Always run `git status -sb` first.
 
 ## Notes
 
-- This is NOT the same as `stale-base-pr-silently-reverts-upstream-content`
+- This is NOT the same as `check-a-stale-branch-is-not-undoing-newer-main-work`
   (that's about merging a stale PR clobbering main's progress). The trigger
   here is the OPPOSITE direction: your local clobbering the remote on push.
 - It is also NOT the same as `gh-pr-merge-worktree-checkout-trap` (failed
