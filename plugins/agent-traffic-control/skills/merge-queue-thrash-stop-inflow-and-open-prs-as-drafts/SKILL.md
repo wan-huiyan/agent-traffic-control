@@ -16,8 +16,8 @@ description: |
   pull-request runs were merges of main carrying no new code at all. NOT for a
   PR that conflicts — BEHIND is not DIRTY, and nothing here resolves a conflict.
 author: Claude Code
-version: 1.0.0
-date: 2026-08-17
+version: 1.1.0
+date: 2026-11-22
 disable-model-invocation: true
 ---
 
@@ -139,6 +139,26 @@ an agent does to it. See
   BEHIND for reasons that have nothing to do with inflow, and merging its base can
   auto-close it:
   [`stacked-pr-base-branch-deletion-auto-closes-dependent`](../stacked-pr-base-branch-deletion-auto-closes-dependent/SKILL.md).
+
+### 4. Batch, and run the tests on the batch head once
+
+Drafts stop the bill for branches nobody is landing. The next leak is running a full test pass
+**per member** and then landing them one at a time. Once several drafts are ready:
+
+- **Group members that touch different files and need the same kind of test pass**, merge them
+  onto one batch branch (merge, never rebase), and run the owed legs **once, on the batch head**.
+  A member's own pass never counts for the batch: the batch head is a different tree.
+- **Drop the per-member jobs from any test queue the moment the batch exists.** In one incident
+  about 30 queued per-member jobs were tying up a shared test machine for work the batch would
+  re-test anyway.
+- **A recorded pass names a tree, so push the last edit BEFORE the tests run.** A one-line docs
+  fix, or a fact-check record committed after a green pass, voids that pass, because the head now
+  names a different tree. If an edit is still coming, either commit it before the queue reaches
+  the job, or swap the queued job to the new head while it is still waiting. Never push to a
+  branch whose tests have already run unless you mean to pay for them again.
+- **Start the census with what has a pass.** "Which open pull requests already have a recorded
+  pass for their exact head tree?" is a one-command answer, and it names what can land today.
+  Everything else is a batch to build, not a queue to wait in.
 
 ## Verification
 

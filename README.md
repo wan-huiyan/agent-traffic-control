@@ -1,6 +1,6 @@
 # Agent Traffic Control
 
-A coordination toolkit of 124 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
+A coordination toolkit of 126 [Claude Code](https://claude.com/claude-code) skills — plus one installable hook — for **running multiple parallel sessions against the same repo without collisions, stranded work, or rebase loops**: issue-pickup claim protocol, worktree & session-isolation pitfalls, parallel-PR conflict recovery, subagent-integrity edge cases, and the squash/merge mechanics that bite when multiple PRs converge on the same branch.
 
 [![license](https://img.shields.io/github/license/wan-huiyan/agent-traffic-control)](LICENSE)
 [![last commit](https://img.shields.io/github/last-commit/wan-huiyan/agent-traffic-control)](https://github.com/wan-huiyan/agent-traffic-control/commits)
@@ -18,7 +18,7 @@ A coordination toolkit of 124 [Claude Code](https://claude.com/claude-code) skil
 # Add the marketplace
 /plugin marketplace add wan-huiyan/agent-traffic-control
 
-# Install the plugin — one shot, gets all 124 skills
+# Install the plugin — one shot, gets all 126 skills
 /plugin install agent-traffic-control@wan-huiyan-agent-traffic-control
 ```
 
@@ -28,7 +28,7 @@ This is a single multi-skill plugin (modeled on `superpowers`), not a marketplac
 
 ## The six buckets
 
-The 124 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
+The 126 skills split into a **before / during / after / orchestrator-aware / merge-mechanics / workflow-orchestration** arc:
 
 ### A. Pickup / claim coordination — *prevention*
 
@@ -239,6 +239,8 @@ The squash/merge mechanics that bite when multiple PRs converge on the same bran
 | [**solo-repo-branch-protection-stable-gate-and-self-merge**](plugins/agent-traffic-control/skills/solo-repo-branch-protection-stable-gate-and-self-merge/) | Configure branch protection on a solo-maintained repo so red changes can't reach main, without locking yourself out — stable aggregation gate vs matrix check names, require-PR, self-merge with zero reviewers. |
 | [**async-post-commit-hook-commit-orphaned-by-squash-merge**](plugins/agent-traffic-control/skills/async-post-commit-hook-commit-orphaned-by-squash-merge/) | In a repo with an async post-commit hook that makes its own follow-up commit, the hook's commit can be orphaned (never reach main) when the PR squash-merges. |
 | [**merge-queue-thrash-stop-inflow-and-open-prs-as-drafts**](plugins/agent-traffic-control/skills/merge-queue-thrash-stop-inflow-and-open-prs-as-drafts/) | Main moves faster than the slowest CI leg, so every branch is BEHIND before its own run finishes and nothing lands with nothing red. Stop the inflow, land one at a time — and open every PR as a draft, which measured ~46s against ~16min and would have saved 23–48% of CI minutes over 8 days. |
+| [**peer-window-grant-copy-the-parser-and-stay-quiet-while-live**](plugins/agent-traffic-control/skills/peer-window-grant-copy-the-parser-and-stay-quiet-while-live/) | You lend a shared host to a peer agent with a hold file and a text grant its controller parses. A paraphrased label refuses the window before entry; a note posted mid-window that names an archived hold reads as a withdrawal and stops it after entry. Copy labels from the parser, archive before issuing, and write nothing while the window is live. Peers told "no tests" still run "light" commands, so the rule that holds is "nothing". |
+| [**running-job-queue-ignores-in-place-edits**](plugins/agent-traffic-control/skills/running-job-queue-ignores-in-place-edits/) | A loop feeding jobs from a file it opened once never sees a `sed -i` edit: the rename gives the name a new inode. Append-only is the one safe live edit. Rebuild from the runner's own "submitted" log line, never a line count; one rebuild that counted silently dropped a whole test leg. |
 | [**auto-merge-rearms-while-agent-live-kill-then-disarm-verify**](plugins/agent-traffic-control/skills/auto-merge-rearms-while-agent-live-kill-then-disarm-verify/) | Disarming auto-merge does not hold a PR whose agent is still running — arming is a step in the agent's brief, so it re-arms and merges. Kill the agent first, then disarm, then read the state back; or convert to draft, which GitHub enforces. |
 | [**batch-merge-subject-is-not-evidence-a-member-landed**](plugins/agent-traffic-control/skills/batch-merge-subject-is-not-evidence-a-member-landed/) | A batch or roll-up commit's subject names its members, but the batch was assembled before the member's last push — so a named member can still be hundreds of lines ahead of main. Compare content file by file, expecting exactly one legitimate difference: the shared aggregate file every member appends to. |
 | [**batch-member-cites-a-path-only-a-non-member-adds**](plugins/agent-traffic-control/skills/batch-member-cites-a-path-only-a-non-member-adds/) | **You wrote something correct that the default reader cannot reach.** Outward: a member's added comment, docstring or tracker row NAMES a path only a NON-member adds — nothing resolves a path inside prose, so the batch merges green and the target branch points at a file it does not have. Inward (the mirror): a rule, ruling or ledger everyone is asked to obey sits on an unlanded branch. Same fix both ways — ask what the DEFAULT reader can reach, not what you can reach. |
