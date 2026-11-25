@@ -1,6 +1,6 @@
 # Research leadership and a separate PR-queue coordinator
 
-Read this reference when several writers feed a shared landing queue. Use a separate queue coordinator when release timing, branch freshness and CI costs require sustained attention while research or implementation continues. A small queue may use one agent in both roles, but the ownership and authorization boundaries still apply. Do not create an extra standalone task without the user's request.
+Read this reference when several writers feed a shared landing queue. For the queue coordinator's own day-to-day playbook (batching, the shared test machine, the census before a ready flip, turn-taking on a shared laptop), read `control-tower`. Use a separate queue coordinator when release timing, branch freshness and CI costs require sustained attention while research or implementation continues. A small queue may use one agent in both roles, but the ownership and authorization boundaries still apply. Do not create an extra standalone task without the user's request.
 
 ## Divide decisions, not just files
 

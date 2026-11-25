@@ -1,12 +1,12 @@
 ---
 name: shared-mutable-index-rmw-race-use-marker-blob-per-item
-listing_tier: name-led
 description: |
   Designing a shared "who is active / recent items" index that concurrent producers write to: one
   mutable list silently loses entries. Write one marker per item.
+disable-model-invocation: true
 author: Claude Code
-version: 1.1.1
-date: 2026-11-22
+version: 1.1.2
+date: 2026-11-25
 ---
 # Shared mutable index → use a marker blob/row per item (not a read-modify-written list)
 
