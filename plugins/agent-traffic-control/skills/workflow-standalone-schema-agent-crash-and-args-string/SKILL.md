@@ -6,14 +6,14 @@ description: |
   with "Error: agent({schema}): subagent completed without calling StructuredOutput (after 2
   in-conversation nudges)" — caused by a STANDALONE/terminal `await agent(prompt, {schema})` that
   is NOT inside parallel()/pipeline(), so the throw propagates and fails the whole run even though
-  the other agents succeeded; (2) a workflow fails immediately with "TypeError: undefined is not an
+  the other agents succeeded; (2) (caller error; the Workflow tool now documents passing real JSON values) a workflow fails immediately with "TypeError: undefined is not an
   object (evaluating 'P.candidates.map')" or args being a string — caused by the `args` global
   arriving as a JSON STRING in the script, not a parsed object. Covers guarding standalone schema
   agents (try/catch, parallel wrapper, or schema-less), defensive JSON.parse of args, and recovering
   a crashed run cheaply via resumeFromRunId (completed agents return cached).
 author: Claude Code
-version: 1.2.0
-date: 2026-06-06
+version: 1.3.0
+date: 2026-11-22
 disable-model-invocation: true
 ---
 
@@ -31,7 +31,7 @@ the second can throw away a near-complete, six-figure-token run on one agent's h
   Symptom: many agents ran (high `agent_count` / `subagent_tokens`), but `status: failed` and the
   workflow returned nothing. The culprit is almost always a **standalone** `const x = await agent(prompt, {schema})`
   (e.g. a final "critic"/"synthesis" step) that is NOT wrapped in `parallel()` or `pipeline()`.
-- **Mode B — args is a string.** The run fails in `~10ms` at the first line touching `args`, with
+- **Mode B — args is a string (caller error; current Workflow docs say: "Pass arrays/objects as actual JSON values, NOT as a JSON-encoded string — a stringified list breaks `args.filter`/`args.map` in the script"). Fix first by passing a real array/object.** The run fails in `~10ms` at the first line touching `args`, with
   `TypeError: undefined is not an object (evaluating 'P.candidates.map')`, **`X.map is not a function`**
   (e.g. `SESSIONS.map is not a function` when `const SESSIONS = args`), or any `args.<field>` access.
   The `args` you passed as a JSON object/array reached the script as a **JSON string**, so `args.map`/`args.foo` is invalid.
@@ -98,7 +98,7 @@ re-run — just pull the N findings and synthesize inline. (Verified 2026-06-05:
 whose 5th synthesis agent hit the StructuredOutput error — all 4 reviewers' findings were intact in
 `journal.jsonl`, recovered + synthesized by hand, zero re-run.)
 
-### Mode B — parse args defensively
+### Mode B — pass real JSON; parse defensively only as a fallback
 Make the script tolerate `args` arriving as a string:
 ```js
 const P = (typeof args === 'string') ? JSON.parse(args) : args

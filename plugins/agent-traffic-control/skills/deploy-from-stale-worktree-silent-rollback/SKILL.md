@@ -135,7 +135,7 @@ stranded the grep returns non-zero and you stop before the build runs.
 then re-pull. The lock file is always empty (`0` bytes) — verify
 with `ls -la` that no process holds it before deleting.
 
-**Cross-reference:** the `worktree-index-corrupt-async-post-commit-hook`
+**Cross-reference:** the `recover-from-an-async-post-commit-hook`
 skill covers the lock-file mechanism itself (and the
 `fatal: unable to read <sha>` errors when the corruption is worse).
 This skill's variant is specifically the *silent* case where neither
@@ -420,7 +420,7 @@ good revision), then proper rebuild instructions handed back to user
 
 ## Sister skills
 
-- `worktree-index-corrupt-async-post-commit-hook` — the underlying
+- `recover-from-an-async-post-commit-hook` — the underlying
   lock-file mechanism the v1.2 "silent pull" variant depends on.
   That skill covers the LOUD case (`fatal: unable to read <sha>`
   errors); this skill's v1.2 variant covers the SILENT case (no

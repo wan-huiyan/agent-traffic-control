@@ -106,6 +106,6 @@ session's own tip was amended.
   the designated branch from the latest default branch instead and treat the
   follow-up as fresh work (never stack on merged history).
 - Sister patterns: `gh-pr-create-orchestration-cwd-wrong-head` (explicit
-  head selection), `stale-base-pr-silently-reverts-upstream-content` (why
+  head selection), `check-a-stale-branch-is-not-undoing-newer-main-work` (why
   the early main merge matters), `gh-squash-merge-closes-only-one-issue`
   (issue-keyword hygiene in the superseding PR body).

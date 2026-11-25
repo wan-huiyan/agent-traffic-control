@@ -166,8 +166,8 @@ stale. Every deleted SHA was recorded on a `salvage/worktree-cleanup-*` branch.
   shared repo. Protect `main`, the default branch, and every open-PR branch.
 - See also: `gh-pr-merge-worktree-checkout-trap` (merging when a sibling
   worktree holds the base branch), `git-recover-lost-branch` (post-hoc
-  recovery), `git-pull-after-squash-merge` and
-  `working-tree-edits-stranded-on-squash-merge` (other squash-merge effects).
+  recovery), `verify-a-squash-merge-by-content-not-lineage` and
+  `reland-work-that-missed-a-squash-merge` (other squash-merge effects).
 
 ## References
 

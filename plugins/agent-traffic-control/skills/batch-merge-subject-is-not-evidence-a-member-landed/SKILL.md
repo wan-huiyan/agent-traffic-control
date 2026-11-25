@@ -201,7 +201,7 @@ right, and it was right for a reason the subject line could not supply.
 
 ## Notes
 
-- **Sister skill**: [`squash-merge-content-preservation-vs-ancestor-check`](../squash-merge-content-preservation-vs-ancestor-check/SKILL.md)
+- **Sister skill**: [`verify-a-squash-merge-by-content-not-lineage`](../verify-a-squash-merge-by-content-not-lineage/SKILL.md)
   covers the other half — why the ancestry probe fails after a squash even
   when the content is preserved verbatim. This skill is about the case where
   the content genuinely is NOT preserved, and every signal except a content

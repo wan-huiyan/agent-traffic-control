@@ -166,7 +166,7 @@ specific branch), cherry-pick the auth commit onto the target worktree.
 
 - `gh-pr-merge-worktree-checkout-trap` — different worktree gotcha (sibling
   worktree blocks `gh pr merge --delete-branch`)
-- `using-git-worktrees` — creating worktrees safely
+- `superpowers:using-git-worktrees` — creating worktrees safely
 - `worktree-historical-test-replay-missing-dirs` — pytest exit 4 in worktrees
   when historical SHAs reference paths that no longer exist
 - `worktree-outer-ls-mistaken-for-main-state` — sister gotcha: `ls /outer/repo/`

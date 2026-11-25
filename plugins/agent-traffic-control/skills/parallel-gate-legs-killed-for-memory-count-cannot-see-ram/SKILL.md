@@ -245,7 +245,7 @@ the run and named it precisely, where the leg table just showed a number:
 Four independent statements that no measurement exists, rather than one ambiguous
 exit code. **If your harness writes a receipt, read its refusal before reading the
 log** — a leg table carries no evidence of its own completeness, and a green one
-can describe a tree you no longer have (see `working-tree-edits-stranded-on-squash-merge`
+can describe a tree you no longer have (see `reland-work-that-missed-a-squash-merge`
 for the neighbouring failure).
 
 ### Why the advisory form of this rule did not hold

@@ -255,5 +255,5 @@ ten minutes instead of something that costs a session.
   out of a commit without checking it out, which is what makes step 1 free.
 - Git docs: [`git symbolic-ref`](https://git-scm.com/docs/git-symbolic-ref) — resolves the
   remote's default branch, so step 1 does not hard-code `main`.
-- `stale-base-drops-rows-from-a-shared-ledger` — the same ledger, the write side: a stale
+- `check-a-stale-branch-is-not-undoing-newer-main-work` — the same ledger, the write side: a stale
   base silently drops other sessions' rows. Read it before editing the rows you just read.
