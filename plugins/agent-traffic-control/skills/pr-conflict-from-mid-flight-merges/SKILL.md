@@ -204,7 +204,7 @@ Step 7: `git push --force-with-lease` succeeded, `gh pr edit` refreshed the body
 - **If the rebase replays MANY more commits than you expect** (e.g., you committed 1 thing but rebase says "Rebasing 1/14"), you're probably on the wrong branch or your branch accumulated work from a sibling. Verify with `git branch --show-current` before continuing. Abort with `git rebase --abort` if the count is suspicious.
 - **The `warning: skipped previously applied commit` line is your friend** — it's git telling you the rebase identified a squash-merge equivalence via `git patch-id`. If you don't see this warning when you expected to (i.e., your branch was based on an unmerged branch that has now squash-merged), check whether that base branch's content is actually on main via `git log origin/main --grep` or `git diff <merge-base>..origin/main -- <file>`.
 - **Refreshing the PR description after rebase is non-optional.** The original body may contain claims that are no longer true (e.g., "builds on unmerged branch X"). Reviewers will be confused unless you strike through outdated notes and add a "rebased onto current main" line.
-- **Adjacent skill:** `git-pull-after-squash-merge` covers a related but different symptom ("untracked working tree files would be overwritten by merge"). Use that one when the conflict is about uncommitted local changes vs. an incoming merge, not about a feature branch needing rebase.
+- **Adjacent skill:** `verify-a-squash-merge-by-content-not-lineage` covers a related but different symptom ("untracked working tree files would be overwritten by merge"). Use that one when the conflict is about uncommitted local changes vs. an incoming merge, not about a feature branch needing rebase.
 
 ## References
 
@@ -221,15 +221,13 @@ These carry `disable-model-invocation: true`. They never appear in the skill
 listing and the Skill tool refuses them, so the only way in is to open the file
 with Read when one of these matches what you are looking at.
 
-- [`squash-merge-content-preservation-vs-ancestor-check`](../squash-merge-content-preservation-vs-ancestor-check/SKILL.md) — checking whether an upstream commit survived a propagation PR — ancestry says no, content says yes
-- [`pr-followup-commit-stranded-after-squash`](../pr-followup-commit-stranded-after-squash/SKILL.md) — commits pushed to an open PR branch never reached main because it was squash-merged between pushes
-- [`async-post-commit-hook-commit-orphaned-by-squash-merge`](../async-post-commit-hook-commit-orphaned-by-squash-merge/SKILL.md) — a background hook's own follow-up commit is orphaned by the squash
-- [`gh-pr-merge-squash-stdout-shows-sibling-files-as-created`](../gh-pr-merge-squash-stdout-shows-sibling-files-as-created/SKILL.md) — `gh pr merge --squash` prints far more files than your PR touched
+- [`verify-a-squash-merge-by-content-not-lineage`](../verify-a-squash-merge-by-content-not-lineage/SKILL.md) — checking whether an upstream commit survived a propagation PR (ancestry says no, content says yes), or `gh pr merge --squash` printing far more files than your PR touched
+- [`reland-work-that-missed-a-squash-merge`](../reland-work-that-missed-a-squash-merge/SKILL.md) — commits pushed to an open PR branch never reached main because it was squash-merged between pushes
+- [`recover-from-an-async-post-commit-hook`](../recover-from-an-async-post-commit-hook/SKILL.md) — a background hook's own follow-up commit is orphaned by the squash
 - [`gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes`](../gh-pr-merge-unstable-state-needs-auto-and-watch-branch-deletes/SKILL.md) — `gh pr merge` fails in a way that looks like a conflict but is an UNSTABLE mergeStateStatus
 - [`gha-pr-merge-ref-shows-upstream-changes`](../gha-pr-merge-ref-shows-upstream-changes/SKILL.md) — CI fails on a file you never changed because it tested the merge ref, not your branch
 - [`git-diff-2dot-vs-3dot-merge-safety`](../git-diff-2dot-vs-3dot-merge-safety/SKILL.md) — a false "this PR deletes files on main" alarm from using two-dot instead of three-dot diff
-- [`pr-from-stale-branch-silently-reverts-newer-main-files`](../pr-from-stale-branch-silently-reverts-newer-main-files/SKILL.md) — a PR from an old branch point silently reverts files that landed on main afterwards, with no conflict
-- [`worktree-stale-local-main-ref-inflates-pr-diff`](../worktree-stale-local-main-ref-inflates-pr-diff/SKILL.md) — `git diff main...<branch>` reports dozens of upstream files because the local `main` ref is stale
+- [`check-a-stale-branch-is-not-undoing-newer-main-work`](../check-a-stale-branch-is-not-undoing-newer-main-work/SKILL.md) — a PR from an old branch point silently reverts files that landed on main afterwards, or `git diff main...<branch>` reports dozens of upstream files because the local `main` ref is stale
 
 Two more about the churn itself rather than the conflict it produces. Reach for these
 when the PRs are `BEHIND` rather than `DIRTY` — there is nothing to resolve and nothing

@@ -185,7 +185,7 @@
       "prompt": "My old branch point silently deleted files that landed on main afterwards",
       "should_trigger": false,
       "category": "negative",
-      "notes": "pr-from-stale-branch-silently-reverts-newer-main-files"
+      "notes": "check-a-stale-branch-is-not-undoing-newer-main-work"
     },
     {
       "id": "neg-9",

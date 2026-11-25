@@ -168,19 +168,18 @@ $ git branch -f main origin/main   # safe to snap, content is preserved
   that landed on `origin/main` since — one measured case reported **92 files / 8,381
   insertions** for a commit that touched **6**. Switching from 2-dot to 3-dot without
   fixing the ref trades one false alarm for another. See
-  `worktree-stale-local-main-ref-inflates-pr-diff`.
-- Related: `git-pull-after-squash-merge` (overwriting-files error after squash);
+  `check-a-stale-branch-is-not-undoing-newer-main-work`.
+- Related: `verify-a-squash-merge-by-content-not-lineage` (overwriting-files error after squash);
   `pr-conflict-from-mid-flight-merges` (DIRTY status from sibling PRs landing);
-  `worktree-stale-local-main-ref-inflates-pr-diff` (the complementary trap: a correct
-  3-dot operator against a stale LOCAL `main` ref);
-  `pr-from-stale-branch-silently-reverts-newer-main-files` (the case where deletions
-  under 3-dot are REAL — a stale tree under a current pointer).
+  `check-a-stale-branch-is-not-undoing-newer-main-work` (two complementary traps: a correct
+  3-dot operator against a stale LOCAL `main` ref, and deletions under 3-dot that are REAL —
+  a stale tree under a current pointer).
 - **`--diff-filter=D` empty does NOT mean nothing was lost.** It catches removed
   *files*; it says nothing about reverted *content*. A branch can roll a corrected
   figure back to its old value, or drop rows from a shared ledger, with an empty
   `D` filter, zero conflicts and green CI — the loss shows only as `-` lines in the
   content diff. Read the 3-dot diff; do not merely gate on it. For the ledger shape
-  specifically, see [`stale-base-drops-rows-from-a-shared-ledger`](../stale-base-drops-rows-from-a-shared-ledger/SKILL.md).
+  specifically, see [`check-a-stale-branch-is-not-undoing-newer-main-work`](../check-a-stale-branch-is-not-undoing-newer-main-work/SKILL.md).
 - **Use `--diff-filter=DR`, not `D`.** A rename reports as `R100`, so a served path
   renamed away is invisible to a `D`-only filter.
 

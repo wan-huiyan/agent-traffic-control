@@ -64,7 +64,7 @@ yourself and pass its **absolute path** in, then have the agent `cd` there as st
 git worktree add /abs/path/outside/repo/agent-<n> -b <branch-for-agent-n> origin/main
 ```
 
-`using-git-worktrees` covers doing that safely. What does **not** work is any wording,
+`superpowers:using-git-worktrees` covers doing that safely. What does **not** work is any wording,
 however emphatic, in the prompt.
 
 ### 2. Make every agent prove where it is, in its first 30 seconds

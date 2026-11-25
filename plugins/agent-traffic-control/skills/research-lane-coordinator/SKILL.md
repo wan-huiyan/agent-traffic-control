@@ -42,3 +42,7 @@ When a measurement run ends, read the layer that failed before reporting it: a j
 Before a lane's finding reaches the owner, check it against the document it came from rather than against your own summary of it: a claim that was true in an audit arrives wider in the page built from it when a verb changes on the way. See [`relayed-claim-widens-and-two-relays-are-one-witness`](../relayed-claim-widens-and-two-relays-are-one-witness/SKILL.md) for the word-for-word diff that catches it, for why a figure-checking verifier passes it, and for why two sessions repeating a claim from one shared summary are one witness rather than two.
 
 This is an event-driven loop within authorized work, not a background scheduler or permission to rewrite arbitrary memory. Local workflow edits can proceed within an explicit maintenance grant; publishing, changing owner policies or touching unrelated memory requires the applicable authority. For memory-hygiene compatibility, use [the integration notes](references/memory-hygiene.md).
+
+## Reference-only siblings
+
+- [`usage-limit-handoff-one-page-with-paste-in-starters`](../usage-limit-handoff-one-page-with-paste-in-starters/SKILL.md): open with Read when the account's usage limit is near and another account must pick up the live lanes.

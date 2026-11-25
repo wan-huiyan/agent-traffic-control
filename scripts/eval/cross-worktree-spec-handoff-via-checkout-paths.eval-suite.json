@@ -32,9 +32,9 @@
     {"id": "pos-25", "prompt": "Pass the handoff prompt from the design session to the implementation session without merging first", "should_trigger": true, "category": "positive"},
 
     {"id": "neg-1", "prompt": "The PR merged but half my work is missing from main and the branch ref looks frozen", "should_trigger": false, "category": "negative", "notes": "subagent-driven-branch-ref-froze-stranded-commits"},
-    {"id": "neg-2", "prompt": "My uncommitted Edit changes were stranded when the PR got squash merged", "should_trigger": false, "category": "negative", "notes": "working-tree-edits-stranded-on-squash-merge"},
+    {"id": "neg-2", "prompt": "My uncommitted Edit changes were stranded when the PR got squash merged", "should_trigger": false, "category": "negative", "notes": "reland-work-that-missed-a-squash-merge"},
     {"id": "neg-3", "prompt": "Two agents want the same issue, how do we claim it so nobody duplicates the work", "should_trigger": false, "category": "negative", "notes": "gh-issue-claim-coordination"},
-    {"id": "neg-4", "prompt": "The async post-commit hook keeps stalling my rebase", "should_trigger": false, "category": "negative", "notes": "git-rebase-stalls-async-post-commit-hook"},
+    {"id": "neg-4", "prompt": "The async post-commit hook keeps stalling my rebase", "should_trigger": false, "category": "negative", "notes": "recover-from-an-async-post-commit-hook"},
     {"id": "neg-5", "prompt": "Before dispatching overnight agents, check the warehouse actually has these table and column names", "should_trigger": false, "category": "negative", "notes": "inherited-scope-doc-names-may-not-exist"},
     {"id": "neg-6", "prompt": "A code review subagent invented specific line numbers to make a finding sound worse", "should_trigger": false, "category": "negative", "notes": "code-review-subagent-fabricates-specifics-to-inflate-severity"},
     {"id": "neg-7", "prompt": "The deploy went out from a stale checkout and silently rolled the service back", "should_trigger": false, "category": "negative", "notes": "deploy-from-stale-worktree-silent-rollback"},

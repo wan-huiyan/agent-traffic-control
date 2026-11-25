@@ -22,3 +22,9 @@ Distinguish a user's policy choice from a claimed empirical result. A user can c
 Record the correction as incorporated and checked, rejected with evidence, or pending a specific missing input. Preserve mixed outcomes. Revisit when later evidence challenges the rule; narrow, replace or remove it if its cost exceeds its demonstrated benefit. Do not recursively run self-improvement because this skill describes it, or require a review panel for every change.
 
 For an authorized memory audit, read [memory-hygiene integration](references/memory-hygiene.md) and the installed audit skill's own instructions. The integration is optional. For multiple research lanes, use [Research Garden](../research-lane-coordinator/SKILL.md); for shared worktrees and PRs, use the applicable traffic-control procedure. Do not load these other workflows just because this skill mentions them.
+
+## Reference-only siblings
+
+Open with Read when one matches:
+- [`lesson-that-recurs-after-being-written-becomes-a-check`](../lesson-that-recurs-after-being-written-becomes-a-check/SKILL.md): a lesson already written down was broken again; turn a mechanical rule into a hook or check.
+- [`guard-refuses-a-step-hand-it-to-the-person`](../guard-refuses-a-step-hand-it-to-the-person/SKILL.md): such a check refuses a step the user asked for; hand them the step, never route around it.

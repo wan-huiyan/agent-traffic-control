@@ -87,4 +87,4 @@ zero regression risk.
   Record the exit status of the baseline run, not just its log, and re-run it if there
   is none. [`leg-guard`](../../hooks/leg-guard/) prevents the collision that causes it
   by refusing to start a leg while a peer's is running.
-- See also: `using-git-worktrees` (worktree mechanics), `concurrent-session-checkout-clobbers-shared-worktree`.
+- See also: `superpowers:using-git-worktrees` (worktree mechanics), `concurrent-session-checkout-clobbers-shared-worktree`.
