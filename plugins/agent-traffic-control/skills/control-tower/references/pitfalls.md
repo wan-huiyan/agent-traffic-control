@@ -60,3 +60,49 @@ queued jobs when the machine is quiet. When the arrangement changes, the old iss
 A loop that is "retired" only by a note somewhere keeps polling. The next time its conditions
 hold, it grants a slot nobody is expecting. Each issuer now checks on every pass whether it
 has been retired, and if so prints WITHDRAWN and exits. Its last log line then shows it stopped.
+
+## The pattern kill that took the runner's job (lesson 16)
+
+A subagent had started a submit loop of its own and wanted it stopped. It ran `pkill -f` with the
+tool's name and the word "submit". The coordinator's queue runner was in the middle of a submit
+at that moment, and its command line matched too. The runner's submit died, and the job was never
+accepted. Nothing printed an error. The gap showed up only when the result never came. Recording
+the process ID at start (`$!`) and killing only that would have touched nothing else.
+
+## Eight jobs nobody queued (lesson 17)
+
+A coordinator gave a subagent the test tooling so it could check one change. The brief did not
+say not to submit. The subagent sent eight single-file jobs, about one a minute. Each went to the
+shared test machine ahead of two batches that were waiting to land. The fix was one sentence in
+every brief: do not submit, return the job list (commit, leg, target) to the coordinator.
+
+## The landing that emptied the queue (lesson 18)
+
+A batch landed, so main moved. The test machine requires each job's commit to contain current
+main, so every queued job pinned to an older commit failed that check. The runner deferred all
+of them and exited with "queue empty". That included the next batch's own jobs, which had been
+built to run next. What helps is a fixed routine straight after a landing: merge main into the
+next batch, re-point its queue lines at the merged head, restart the runner, and decide which
+deferred pull requests to refresh.
+
+## The ID that was never accepted (lesson 19)
+
+A submit printed a job ID, and the session waited for its result. The ID never appeared in the
+machine's own job list. The submit had not been accepted, and the printed ID only showed that
+the tool had produced a string. Reading the machine's status for that exact ID, soon after the
+submit, would have caught it within a minute instead of after a long wait.
+
+## The monitor that watched an old file (lesson 20)
+
+A monitor tailed the output file of a background runner. The runner restarted, and each start
+wrote to a new file. The monitor kept reading the old one, which no longer changed, so it printed
+nothing. Silence looked like "still running". Even the runner's exit went unseen, because the
+exit line went to the new file. One fixed log file, or a watcher re-pointed on every restart,
+with a filter that also matches the exit and STOP lines, closes the gap.
+
+## The merge that did not wait for its checks (lesson 21)
+
+A repo had no required checks. `gh pr merge --auto` there merged at once, since nothing stood in
+the way. The checks ran afterwards and passed, so no harm came of it, but nothing had made them a
+condition. It would have merged the same way if they had failed. In such a repo, wait until
+`gh pr checks` shows nothing pending, or turn on branch protection with a required check.
