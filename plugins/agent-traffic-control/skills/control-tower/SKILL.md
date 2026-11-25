@@ -3,7 +3,7 @@ name: control-tower
 listing_tier: short
 description: Use when a session is told it is the coordinator of a pull request queue, a shared test machine, a shared laptop and peer agent sessions. Covers batching, duplicate test jobs, the census before a ready flip, turn-taking.
 author: Claude Code
-version: 1.0.0
+version: 1.1.0
 date: 2026-11-25
 ---
 # Control tower: running the queue as the coordinator
@@ -69,6 +69,14 @@ A loop that opened the queue file once may never see an in-place edit. Read `run
 **Why.** Duplicates cost the same machine time as real work and push everything behind them later. In one real queue this cut 132 jobs to about 35.
 
 **How to check.** For each single-file job, ask two questions. Is there a whole-group job queued on the same commit? Is the file absent from every skip list that group reads? Drop the job only when the answers are yes and yes. Count the queue before and after and keep both numbers.
+
+### 19. A job ID is not proof the job was accepted
+
+**Rule.** After a submit, read the machine's own status for that ID. Treat "the tool printed an ID" as unknown until the machine lists it.
+
+**Why.** One submit printed an ID that never appeared in the machine's job list. Everyone waited for a result that could never arrive.
+
+**How to check.** Ask the machine about that exact ID (use your tool's status or list command) and look for the ID in its output. If it is not there within a minute, resubmit once and say so.
 
 ## Building a batch
 
@@ -146,6 +154,31 @@ Every "out" line names a person or session, a place (branch or worktree) and a t
 git rev-parse 'HEAD^{tree}'   # same value before and after the review's fixes
 ```
 
+### 18. Landing a batch moves main, and that can empty the queue
+
+**Rule.** Straight after each landing, do four things for the next batch. Merge main into it with the tree-preserving merge from lesson 6. Re-point its queue lines at the merged head. Restart the queue runner. Then decide which deferred pull requests to refresh.
+
+**Why.** The test machine requires every job's commit to contain current main. After a landing, each queued job pinned to an older commit fails that check. The runner defers them all and exits with "queue empty", and that includes the next batch's own jobs.
+
+**How to check.** After the landing, read the runner's last lines. If it says "queue empty", count the deferred jobs. Then confirm no queue line still names a commit that lacks main:
+
+```bash
+git merge-base --is-ancestor origin/main <job commit> || echo "stale: <job commit>"
+```
+
+### 21. A repo with no required checks merges before its checks finish
+
+**Rule.** Before you merge in a repo that has no required checks, wait until `gh pr checks <n>` shows nothing pending. Or turn on branch protection with a required check, so the wait is enforced.
+
+**Why.** `gh pr merge --auto` on such a repo merges at once, because nothing is required. The checks ran and passed afterwards, but nothing had made them a condition of the merge.
+
+**How to check.**
+
+```bash
+gh pr checks <n>   # no line may say pending, and none may say fail
+gh api repos/<owner>/<repo>/branches/main/protection --jq '.required_status_checks.contexts'   # empty or an error means nothing is required
+```
+
 ## The shared laptop
 
 ### 9. Take turns on the laptop, in writing
@@ -180,6 +213,31 @@ When you lend the machine to a peer through a hold file and a text grant, read `
 **Why.** Without those three fields you cannot tell whether a hit was a real run or a search that happened to mention it.
 
 **How to check.** Run a harmless `grep <watched script name> /dev/null` while the guard is active. If the guard fires, it needs a narrower match. Read the guard's log for the parent process id and start time of the hit. See `waiter-pgrep-matches-its-own-command-line` for the same trap in wait loops.
+
+### 16. Never kill processes by a name pattern
+
+**Rule.** On a shared machine, stop only the process IDs you started. Record the ID when you start something (`$!` in a shell, or the ID your tool prints) and kill that. Never run `pkill -f` or `killall` with a name or a phrase from a command line.
+
+**Why.** A name pattern matches every process that looks alike, including other sessions' work. A subagent stopped its own submit loop with a pattern that also matched the queue runner's submit that was in flight. That job was silently never accepted.
+
+**How to check.** Before any kill, list what the pattern would hit, and compare it with the IDs you recorded:
+
+```bash
+pgrep -fl "<pattern>"    # every hit that is not in your recorded list is someone else's
+kill <pid you recorded>
+```
+
+### 20. A watcher goes quiet when the process it watches restarts
+
+**Rule.** Have a long-running tool log to one fixed file. If it must log to a new file on each start, re-point the watcher on every restart. Make the watcher's filter match the exit and STOP lines as well as the progress lines.
+
+**Why.** A monitor tailed a background runner's output file. Each restart wrote to a new file, so the monitor saw nothing, and silence looked like "still running".
+
+**How to check.** Restart the runner on purpose and confirm the watcher still reports. Then stop it and confirm the watcher reports the stop:
+
+```bash
+ls -lt <log directory> | head -3   # the newest file should be the one the watcher reads
+```
 
 ### 12. Local copies of web-page fragments need a charset line
 
@@ -220,3 +278,11 @@ A `file://` link can also show another worktree's copy rather than main's: see `
 **Why.** "Done" and "green" are easy to say and cannot be checked. A test count or a commit sha cannot be invented without doing the work.
 
 **How to check.** For each "done" you relay, you have looked at one of: the merged commit on main, the queue's result line, or the pasted tool output. See `subagent-reports-complete-but-pr-unmerged` for reports that say complete while the pull request is still open.
+
+### 17. A subagent with test tooling will submit jobs unless its brief forbids it
+
+**Rule.** Every brief that involves tests says: "Do not submit to the shared test machine. Return the job list (commit, leg, target) to the coordinator."
+
+**Why.** A subagent that can see the submit tool will use it. One coordinator's own subagent sent eight single-file jobs, about one a minute. They jumped ahead of two landing batches.
+
+**How to check.** Read the brief before you send it and look for that sentence. After a subagent finishes, compare the machine's job list with the jobs you queued. Any job you did not queue came from somewhere else.
