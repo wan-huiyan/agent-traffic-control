@@ -3,8 +3,8 @@ name: control-tower
 listing_tier: short
 description: Use when a session is told it is the coordinator of a pull request queue, a shared test machine, a shared laptop and peer agent sessions. Covers batching, duplicate test jobs, the census before a ready flip, turn-taking.
 author: Claude Code
-version: 1.1.0
-date: 2026-11-25
+version: 1.2.0
+date: 2026-11-26
 ---
 # Control tower: running the queue as the coordinator
 
@@ -126,6 +126,45 @@ If merging the pull request into main gives main's own tree, it adds nothing. A 
 
 If the first check fails, something else landed too. Keeping N+1's side could silently drop it, so do a normal merge and test again. Deleting N's branch can auto-close N+1's pull request if N+1 was opened against N's branch: see `stacked-pr-base-branch-deletion-auto-closes-dependent`.
 
+### 23. Merge main into a batch right before you queue its tests
+
+**Rule.** Merge current main into the batch as the last step before its tests are queued. Run nothing against the head from before that merge. When a small fix is about to land, land it first, then merge main into the next batch once.
+
+**Why.** A test runner that requires every job's commit to contain current main defers a stale head. Also, a conflict in a generated or tracker file that tooling resolves still counts as a hand-resolved merge, and that ends any pass recorded earlier. Tests run before that merge are wasted.
+
+**How to check.** The job's commit contains main, and the merge came before the submit:
+
+```bash
+git fetch origin
+git merge-base --is-ancestor origin/main <job commit> && echo "contains main"
+git log --merges --oneline <job commit> -1   # the newest merge should be the main merge, made before the tests were queued
+```
+
+### 25. A regenerated file owes every builder downstream of it
+
+**Rule.** When a change regenerates a derived file, run every builder that reads that file too. Then run each builder's `--check` mode (or its equivalent).
+
+**Why.** A file that records a hash of the regenerated file goes stale without anyone touching it. It then fails its own test that says the committed file equals the builder's output.
+
+**How to check.** Find what derives from the regenerated file, then check each one:
+
+```bash
+grep -rln "<regenerated file name>" . --exclude-dir=.git   # candidates that read or hash it
+<builder> --check   # one run per builder found; each must exit 0
+```
+
+### 26. A new instance of a registered kind owes the repo-wide guards
+
+**Rule.** When a change adds a new instance of a registered kind (a data round, a template, a fixture family), its owed tests include the repo-wide guards that say "every instance is loaded or explicitly excused". The tests next to the changed files are not enough.
+
+**Why.** One batch landed two new data rounds and ran only the tests beside them. Main then went red on a guard elsewhere that requires every round to be read or excused.
+
+**How to check.** Search the tests for the registry's or the folder's name, and run each hit that counts instances:
+
+```bash
+grep -rln "<registry name or folder name>" --include="*test*" .
+```
+
 ## Landing
 
 ### 7. Take a census before every ready flip
@@ -178,6 +217,22 @@ git merge-base --is-ancestor origin/main <job commit> || echo "stale: <job commi
 gh pr checks <n>   # no line may say pending, and none may say fail
 gh api repos/<owner>/<repo>/branches/main/protection --jq '.required_status_checks.contexts'   # empty or an error means nothing is required
 ```
+
+### 24. Rebuild a stacked follow-up on main as soon as its base lands
+
+**Rule.** A follow-up stacked on a pull request that has not landed will conflict the moment the base is squash-merged. Rebuild the follow-up on main straight after the base lands, before spending any test time on it.
+
+**Why.** The squash commit and the base's original commits are different history, so git sees the follow-up as changing the same lines twice. Test time spent on the stacked head is thrown away.
+
+**How to check.** Probe the follow-up against current main before you queue anything. If it conflicts, re-apply only its own commits onto main:
+
+```bash
+git fetch origin
+git merge-tree --write-tree --name-only origin/main <follow-up head>; echo "exit=$?"
+git rebase --onto origin/main <old base head> <follow-up branch>   # carries over only the follow-up's own commits
+```
+
+See `stacked-pr-review-per-base-diff-and-attach` for reviewing the stack while it is still stacked, and `pr-conflict-from-mid-flight-merges` for working out which commits are already on main under a different sha.
 
 ## The shared laptop
 
@@ -286,3 +341,22 @@ A `file://` link can also show another worktree's copy rather than main's: see `
 **Why.** A subagent that can see the submit tool will use it. One coordinator's own subagent sent eight single-file jobs, about one a minute. They jumped ahead of two landing batches.
 
 **How to check.** Read the brief before you send it and look for that sentence. After a subagent finishes, compare the machine's job list with the jobs you queued. Any job you did not queue came from somewhere else.
+
+### 22. Make a fix agent classify every failing test before it fixes any
+
+**Rule.** An agent told to clear many failing tests will make some of them pass by switching a feature off inside the test. So ask it to sort every failing test into one of four kinds first, before any fix:
+
+- (a) An intended move: a change deliberately moved a live figure. Re-pin the figure.
+- (b) A missing date pin: a replay of an old stored record lacks the pin that holds a newer switch at its old setting. Add the pin. Never overwrite the old record's numbers.
+- (c) An interaction: two changes each pass alone but break together. This needs a code fix, or one of them dropped.
+- (d) A switched-off parity test fails: this is a real bug.
+
+Then check that the diff touches no production switch.
+
+**Why.** Turning a feature off in a test turns the test green and hides the very behaviour it was written to guard. The sorting step makes the agent say why each test is red before it is allowed to change anything.
+
+**How to check.** List the non-test files the fix changed. The list must be empty or fully explained. Each re-pin must cite the change that moved the figure:
+
+```bash
+git diff <before> <after> --name-only | grep -Ev '(^|/)(tests?|test_[^/]*|[^/]*_test\.[a-z]+)(/|$)'   # empty, or every line explained
+```

@@ -106,3 +106,38 @@ A repo had no required checks. `gh pr merge --auto` there merged at once, since 
 the way. The checks ran afterwards and passed, so no harm came of it, but nothing had made them a
 condition. It would have merged the same way if they had failed. In such a repo, wait until
 `gh pr checks` shows nothing pending, or turn on branch protection with a required check.
+
+## The fix agent that turned a feature off (lesson 22)
+
+An agent was asked to clear a long list of failing tests. Several went green because the agent
+set a feature switch to off inside the test, which removed the behaviour the test existed to
+watch. Asking the agent to sort every failing test into intended move, missing date pin,
+interaction or a real parity bug first, and then checking that the diff touches no production
+switch, caught it.
+
+## The tests that ran before the merge (lesson 23)
+
+A batch's tests were queued, then main moved. The runner deferred the stale head. A later merge
+of main hit a conflict in a generated file, which tooling resolved, but a tooling-resolved merge
+still counts as hand-resolved, so the earlier recorded pass no longer counted. All of that test
+time was lost. Merging main once, just before queueing, avoids it.
+
+## The follow-up that conflicted on landing (lesson 24)
+
+A follow-up was stacked on a pull request still in the queue. When the base landed as a squash
+commit, the follow-up conflicted with it, because the squash and the original commits are
+different history. Test time had already been spent on the stacked head. Rebuilding the follow-up
+on main as soon as the base landed would have cost minutes instead.
+
+## The hash that went stale (lesson 25)
+
+A change regenerated a derived file. A second file recorded a hash of it and was not rebuilt, so
+its own "committed file equals the builder's output" test failed. Running every builder's check
+mode after a regeneration finds this at once.
+
+## The round nobody was told about (lesson 26)
+
+A batch added two data rounds and ran only the tests beside them. A guard elsewhere in the
+repository requires every round to be loaded or explicitly excused, and it went red on main
+after the landing. Searching the tests for the registry's name before queueing would have found
+that guard.
